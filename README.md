@@ -1,7 +1,8 @@
 # VLBIana
 
 
-This repository combines a selection of analysing tools for VLBI data, written in Python.
+This repository combines a selection of analysing tools for VLBI data, written in Python. It is still in testing mode and mostly meant to distribute these files to colleagues.
+
 By Anne-Kathrin Baczko (baczko@mpifr-bonn.mpg.de).
 
 If you like to use these scripts for any publication, please let me know.
