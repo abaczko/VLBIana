@@ -232,8 +232,8 @@ def rl_fit(mapFile,ridgeLine,shiftFile,saveFile,label,theta,logFile,fit='Powerla
 ### finalize axis settings
 	handles, labels = ax[0,0].get_legend_handles_labels()
 
-	ax[0,0].legend(handles,labels,loc=2,markerscale=1.5,labelspacing=0.1)
-	ax[0,1].legend(handles,labels,loc=0,markerscale=1.5,labelspacing=0.1)
+	ax[0,0].legend(handles,labels,loc=2,markerscale=1,labelspacing=0.1)
+	ax[0,1].legend(handles,labels,loc=2,markerscale=1,labelspacing=0.1)
 	for axs in ax.flat:
 		axs.set_xlim(xmin,xmax)
 		axs.set_ylim(ymin,ymax)
