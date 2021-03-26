@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from ../jet_calculus import *
+from VLBIana.modules.jet_calculus import *
 from astropy.table import Table
 from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition, mark_inset)
 import os,sys
 from glob import glob
-from ../plot_functions import *
-from cleanMap import *
+from VLBIana.modules.plot_functions import *
+from VLBIana.modules.cleanMap import *
 from ridgeLine import *
 
 def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=False,**kwargs):
