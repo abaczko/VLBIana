@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import ../fit_functions as ff 
-from ../plot_functions import *
+import VLBIana.modules.fit_functions as ff 
+from VLBIana.modules.plot_functions import *
 from astropy.io import ascii
 import os
 from glob import glob
 from ridgeLine import *
-from ../jet_calculus import *
+from VLBIana.modulesjet_calculus import *
 
 #plt.style.use('talkstyle')
 def rl_fit(mapFile,ridgeLine,shiftFile,saveFile,label,theta,logFile,fit='Powerlaw',asize=7,plot_hist=False,write_fit_info=True,plot_res=True,plot_ang=True,plot_flux=False,fig_size='aanda*',add_rl=False,fig_extension='pdf',incl=90,binRidgeLine=False,fit_both_jets_together=True,errorFile=False,write_tex=False):

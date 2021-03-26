@@ -32,8 +32,8 @@ import sys,os,json,logging,logging.config,datetime
 #
 import numpy as np
 from Ridgeline_aips import *
-import aips_tasks as AT
-from helper_functions import *
+import VLBIana.PTmodules.aips_tasks as AT
+from VLBIana.moduleshelper_functions import *
 from glob import glob
 from logToTable import *
 import shutil

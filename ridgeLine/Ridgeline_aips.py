@@ -9,9 +9,9 @@ This module uses ParselTongue, which requires a working AIPS.
 @author: Anne-Kathrin Baczko
 '''
 import sys,os,json,logging,logging.config,datetime
-import modules.functions as AF
-import modules.hrk as hrk
-import modules.aips_tasks as AT
+import VLBIana.PTmodules.functions as AF
+import VLBIana.PTmodules.hrk as hrk
+import VLBIana.PTmodules.aips_tasks as AT
 from scipy.stats import sem
 from astropy.table import Table
 from glob import glob
@@ -24,7 +24,7 @@ from AIPSTask import AIPSTask, AIPSList
 from AIPSData import AIPSUVData, AIPSImage,AIPSCat
 from Wizardry.AIPSData import AIPSUVData as WizAIPSUVData
 from AIPSTV import AIPSTV
-from modules.helper_functions import *
+from VLBIana.PTmodules.helper_functions import *
 #from logToTable import *
 #logger = logging.getLogger(__name__)
 local_dir = os.getcwd()+'/'
