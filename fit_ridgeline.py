@@ -31,11 +31,11 @@ E.g.	gwidth=[1,0.5]
 import sys,os,json,logging,logging.config,datetime
 #
 import numpy as np
-from Ridgeline_aips import *
-import VLBIana.PTmodules.aips_tasks as AT
-from VLBIana.moduleshelper_functions import *
+from ridgeline.Ridgeline_aips import *
+import PTmodules.aips_tasks as AT
+from PTmodules.helper_functions import *
 from glob import glob
-from logToTable import *
+from ridgelin.logToTable import *
 import shutil
 #
 ##################################################################
