@@ -89,21 +89,20 @@ class stackedImage():
 		self.stacked_fov	= ma.amax([self.fovx,self.fovy])
 		self.stacked_px_inc = self.stacked_fov/self.stacked_naxis*180/np.pi
 		self.stacked_ppb	= PXPERBEAM(self.stacked_beam,self.stacked_beam,self.stacked_px_inc*np.pi/180)
-		self.date_im	= None
+		self.date_im		= None
 		self.stackedImg = None
-		self.blurImg	= None
+		self.blurImg		= None
 		self.stacked_noise_diff = None
 		#check whether all images have the same field of view. If not, regrid them to the smalles fov.
 		if len(np.unique(np.concatenate([self.fovx,self.fovy])))>1:
+			sys.stdout.write('Regrid images as they do not have the same FOV.\n')
 			maxfov = [max(x,y) for x,y in zip(self.fovx,self.fovy)]
 			self.ehtFiles = [f.pad(mf,mf) for f,mf in zip(self.ehtFiles,maxfov)]
-			sys.stdout.write('Regrid images as not same FOV for all\n')
 			self.ehtFiles = [f.regrid_image(self.stacked_fov,self.stacked_naxis,interp='linear') for f in self.ehtFiles]
 	
 		# blur with a circular gauss
 		blurFiles		= [im.blur_circ(self.stacked_beam) for im in self.ehtFiles]
-		self.blurImg			= np.array([im.imarr(pol='I') for im in blurFiles])
-############# CHECK if shift is estimated correctly! Do I need self.stacked+px_inc?
+		self.blurImg= np.array([im.imarr(pol='I') for im in blurFiles])
 ######################
 		if shiftFile is not None:
 			print(self.shift_ra)
