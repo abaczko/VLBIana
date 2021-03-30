@@ -8,19 +8,18 @@ from scipy import stats
 from matplotlib.lines import Line2D
 from matplotlib.pyplot import cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-#import matplotlib.colors
 import matplotlib as mpl
 import sys
-from jet_calculus import *
-#from cycler import cycler
 from itertools import cycle
 from matplotlib.rcsetup import cycler
-import fit_functions as ff
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,AutoMinorLocator,AutoLocator,ScalarFormatter,FuncFormatter)
 from matplotlib.patches import Ellipse
-from plotSet import *
 from math import log10,floor,ceil
-
+#
+from VLBIana.modules.jet_calculus import *
+import VLBIana.modules.fit_functions as ff
+from VLBIana.modules.plotSet import *
+###################################
 plt.style.use('talkstyle')
 default_cmap = 'gist_earth'
 colormap = 'inferno'

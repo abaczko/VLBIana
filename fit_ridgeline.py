@@ -31,12 +31,13 @@ E.g.	gwidth=[1,0.5]
 import sys,os,json,logging,logging.config,datetime
 #
 import numpy as np
-from ridgeline.Ridgeline_aips import *
-import PTmodules.aips_tasks as AT
-from PTmodules.helper_functions import *
-from glob import glob
-from ridgelin.logToTable import *
 import shutil
+from glob import glob
+#
+from VLBIana.ridgeline.Ridgeline_aips import *
+import VLBIcalib.modules.aips_tasks as AT
+from VLBIcalib.modules.helper_functions import *
+from VLBIana.ridgeline.logToTable import *
 #
 ##################################################################
 # Setup variables for observation You only have to put in something in this section according to you image file.#

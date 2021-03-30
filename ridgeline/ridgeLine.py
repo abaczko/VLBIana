@@ -3,11 +3,9 @@
 
 import numpy as np
 from astropy.table import Table
-import sys
-from ridgelines.cleanMap import *
-import warnings
-import statistics
-import collections 
+import sys,warnings,statistics,collections 
+#
+from VLBIana.modules.cleanMap import *
 
 def readShift(shiftFile):
 	relative_shifts = Table.read(shiftFile, format='ascii')

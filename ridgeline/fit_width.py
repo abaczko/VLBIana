@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import VLBIana.modules.fit_functions as ff 
-from VLBIana.modules.plot_functions import *
 from astropy.io import ascii
 import os
 from glob import glob
-from ridgeLine import *
-from VLBIana.modulesjet_calculus import *
+from VLBIana.ridgeline.ridgeLine import *
+from VLBIana.modules.jet_calculus import *
+import VLBIana.modules.fit_functions as ff 
+from VLBIana.modules.plot_functions import *
 
 #plt.style.use('talkstyle')
-def rl_fit(mapFile,ridgeLine,shiftFile,saveFile,label,theta,logFile,fit='Powerlaw',asize=7,plot_hist=False,write_fit_info=True,plot_res=True,plot_ang=True,plot_flux=False,fig_size='aanda*',add_rl=False,fig_extension='pdf',incl=90,binRidgeLine=False,fit_both_jets_together=True,errorFile=False,write_tex=False):
+def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='Powerlaw',asize=7,plot_hist=False,write_fit_info=True,plot_res=True,plot_ang=True,plot_flux=False,fig_size='aanda*',add_rl=False,fig_extension='pdf',incl=90,binRidgeLine=False,fit_both_jets_together=True,errorFile=False,write_tex=False):
 	''' To fit the width of a jet 
 	'''
 	if type(ridgeLine)==str:
@@ -56,25 +56,36 @@ def rl_fit(mapFile,ridgeLine,shiftFile,saveFile,label,theta,logFile,fit='Powerla
 	nsub+=1
 
 	flux_uncertainty = 0.15
-	shiftRA,shiftDEC = readShift(shiftFile)
 	theta = theta*np.pi/180
+	
+	if shiftFile:
+		shiftRA,shiftDEC = readShift(shiftFile)
+		DistStr = 'Distshift'
+		RAStr = 'RAshift'
+		DecStr = 'Decshift'
 
-	Ridge = [RidgeLine(RL,log,cmap,shift=(shiftra,shiftdec),incl=incl) for RL,log,cmap,shiftra,shiftdec in zip(ridgeLine,logFile,mapFile,shiftRA,shiftDEC)]
+		Ridge = [RidgeLine(RL,log,cmap,shift=(shiftra,shiftdec),incl=incl) for RL,log,cmap,shiftra,shiftdec in zip(ridgeLine,logFile,mapFile,shiftRA,shiftDEC)]
+	else:
+		DistStr = 'Dist'
+		RAStr = 'RA'
+		DecStr = 'Dec'
+		Ridge = [RidgeLine(RL,log,cmap,incl=incl) for RL,log,cmap in zip(ridgeLine,logFile,mapFile)]
+
 	if errorFile:
 		sys.stdout.write('Use errorfile')
 		ridgelines = [RL.readRidgeline(theta,widthErr=eF) for RL,eF in zip(Ridge,errorFile)]
 	else:
 		ridgelines = [RL.readRidgeline(theta) for RL in Ridge]
 	if add_rl:
-		ridgelines[-1]= ridgelines[-1][np.abs(ridgelines[-1]['Distshift'])>=0.2]
+		ridgelines[-1]= ridgelines[-1][np.abs(ridgelines[-1][DistStr])>=0.2]
 	if binRidgeLine:
 		print('use binned ridge line')
 		ridgelines = [RL.binRidgeLine() for RL in Ridge]
 	i=0
 	Jet,CJet = [],[]
 	for rl in ridgelines:
-		Jet.append(rl[np.sign(rl['Distshift'])==1])
-		CJet.append(rl[np.sign(rl['Distshift'])==-1])
+		Jet.append(rl[np.sign(rl[DistStr])==1])
+		CJet.append(rl[np.sign(rl[DistStr])==-1])
 		i+=1
 	
 	fwhmE= 'FWHMDeconvolvedErr'
@@ -83,11 +94,11 @@ def rl_fit(mapFile,ridgeLine,shiftFile,saveFile,label,theta,logFile,fit='Powerla
 	DistJ,DistCJ,fwhmJ,fwhmCJ,fwhmEJ,fwhmECJ,fluxJ,fluxCJ=[],[],[],[],[],[],[],[]
 	i=0
 	for J,CJ in zip(Jet,CJet):
-		DistJ.append(J['Distshift'].copy())
+		DistJ.append(J[DistStr].copy())
 		fwhmJ.append(J[fwhm].copy())
 		fwhmEJ.append(J[fwhmE].copy())
 		fluxJ.append(J['Peak'].copy())
-		DistCJ.append(np.abs(CJ['Distshift'].copy()))
+		DistCJ.append(np.abs(CJ[DistStr].copy()))
 		fwhmCJ.append(CJ[fwhm].copy())
 		fwhmECJ.append(CJ[fwhmE].copy())
 		fluxCJ.append(CJ['Peak'].copy())
@@ -96,7 +107,7 @@ def rl_fit(mapFile,ridgeLine,shiftFile,saveFile,label,theta,logFile,fit='Powerla
 #
 ########################################
 #### make fits ###
-	X	= [rl['Distshift'] for rl in ridgelines] 
+	X	= [rl[DistStr] for rl in ridgelines] 
 	Y	= [rl[fwhm] for rl in ridgelines] 
 	DY= [rl[fwhmE] for rl in ridgelines] 
 

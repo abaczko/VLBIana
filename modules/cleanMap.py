@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from VLBIana.jet_calculus import *
+from VLBIana.modules.jet_calculus import *
 
 class CleanMap(object):
 	def __init__(self,mapFile,ccomp=False):

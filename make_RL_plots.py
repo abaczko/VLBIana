@@ -3,9 +3,8 @@
 '''
 To plot some diagnostic plots and fit a Powerlaw or borkenPowerlaw to the ridgelines
 '''
-from ridgeline.plot_ridgeline import *
-from ridgeline.fit_width import *
-from ridgeline.scattering import *
+from VLBIana.ridgeline.plot_ridgeline import *
+from VLBIana.ridgeline.fit_width import *
 
 mapFile		= ['xx','xx']
 ridgeLine = ['xx','xx']

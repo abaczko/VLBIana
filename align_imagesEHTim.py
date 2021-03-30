@@ -14,7 +14,7 @@ from scipy.ndimage import fourier_shift
 from matplotlib.patches import Circle,Ellipse
 from skimage.draw import circle_perimeter,ellipse_perimeter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from modules.plot_functions import *
+from VLBIana.modules.plot_functions import *
 #import matplotlib.colors as colors
 #font = {'family' : 'normal',
 #				'weight' : 'normal',
@@ -22,7 +22,7 @@ from modules.plot_functions import *
 #matplotlib.rc('font', **font)
 import ehtim as eh
 
-from modules.jet_calculus import *
+from VLBIana.modules.jet_calculus import *
 
 #plt.rcParams.update({'font.size':7})
 

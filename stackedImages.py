@@ -8,10 +8,10 @@ from glob import glob
 from astropy.io import fits
 from itertools import groupby
 from astropy.table import Table
-from jet_calculus import *
-from astropy.time import Time
 from skimage.restoration import estimate_sigma
 import argparse
+from dateutil.parser import parse
+from VLBIana.modules.jet_calculus import *
 
 workDir		= os.getcwd()+'/'
 plotDir = workDir+'plots/'
@@ -29,7 +29,7 @@ def read_shift(shiftFile):
 	'''
 	with fits.open(shiftFile) as hdul:
 		data=hdul[1].data
-	return data.dx,data.dy,data.date
+	return -data.dx,-data.dy,data.date
 	
 
 def apply_shift(img,shift):
@@ -48,6 +48,32 @@ class stackedImage():
 
 	def __init__(self,imgFiles,shiftFile=None):
 		self.header		= [read_header(m) for m in imgFiles]
+		self.shift_ra		= None
+		self.shift_dec	= None
+		self.shift_date = None
+		if shiftFile is not None:
+			shift_ra,shift_dec,shift_date = read_shift(shiftFile)
+			self.date_im	= np.array([parse(h['DATE-OBS']) for h in self.header])
+			date_shift		= np.array([parse(d) for d in shift_date])
+			intersecS = np.in1d(date_shift,self.date_im)
+			intersecI = np.in1d(self.date_im,date_shift)
+			#self.date_im= [np.round(Time(h['DATE-OBS']).to_value('decimalyear'),4) for h in self.header] #previous way of doing it
+			#date_shift	= [np.round(Time(d, format='decimalyear').value,4) for d in shift_date]
+			#date_intersection = list(set(self.date_im).intersection(date_shift))
+			if np.array_equal(intersecI,intersecS):
+				sys.stdout.write('Shifts for all epochs are there. Will continue\n')
+				self.shift_ra	= np.array(shift_ra)
+				self.shift_dec = np.array(shift_dec)
+				self.shift_date= np.array(shift_date)
+			else:
+				sys.stdout.write('Dates/Number of shifts are not equal to the given image observing dates.\n')
+				input('Do you want to continute by only using the images for which shifts are there?\n Press Enter to continue...')
+				self.shift_ra	= np.array(shift_ra)[intersecS]
+				self.shift_dec = np.array(shift_dec)[intersecS]
+				self.shift_date= np.array(date_shift)[intersecS]
+				imgFiles = np.array(imgFiles)[intersecI]
+				self.header		= [read_header(m) for m in imgFiles]
+
 		self.ehtFiles	= [eh.image.load_fits(m, aipscc=True) for m in imgFiles]
 		self.beam			= [[h['BMAJ']*np.pi/180,h['BMIN']*np.pi/180,h['BPA']*np.pi/180] for h in self.header]
 		self.fovx			= np.array([m.fovx() for m in self.ehtFiles])
@@ -57,9 +83,8 @@ class stackedImage():
 		self.px_inc		= np.array([h['cdelt2'] for h in self.header])
 		self.noise_difmap	= np.array([h['noise'] for h in self.header])
 		self.ppb			= [PXPERBEAM(b[0],b[1],pxi*np.pi/180) for b,pxi in zip(self.beam,self.px_inc)]
-		self.mean_beam= np.array([np.sqrt(b[0]*b[1]) for b in self.beam])
-#		self.stacked_beam	= np.sum(self.mean_beam)/len(self.mean_beam)
-		self.stacked_beam = max(self.mean_beam)
+		self.median_beam= np.array([np.sqrt(b[0]*b[1]) for b in self.beam])
+		self.stacked_beam = np.median(self.median_beam)
 		self.stacked_naxis= ma.amax([self.naxis1,self.naxis2])
 		self.stacked_fov	= ma.amax([self.fovx,self.fovy])
 		self.stacked_px_inc = self.stacked_fov/self.stacked_naxis*180/np.pi
@@ -78,26 +103,14 @@ class stackedImage():
 		# blur with a circular gauss
 		blurFiles		= [im.blur_circ(self.stacked_beam) for im in self.ehtFiles]
 		self.blurImg			= np.array([im.imarr(pol='I') for im in blurFiles])
-		if shiftFile is not None:
-			shift_ra,shift_dec,shift_date = read_shift(shiftFile)
-			self.date_im= [np.round(Time(h['DATE-OBS']).to_value('decimalyear'),4) for h in self.header]
-			date_shift	= [np.round(Time(d, format='decimalyear').value,4) for d in shift_date]
-			date_intersection = list(set(self.date_im).intersection(date_shift))
-			if date_intersection.sort() == self.date_im.sort():
-				sys.stdout.write('Shifts for all epochs are there. Will continue\n')
-				shift_ra	= -np.array([a for a,b in zip(shift_ra,date_shift) if b in date_intersection])
-				shift_dec = -np.array([a for a,b in zip(shift_dec,date_shift) if b in date_intersection])
-				shift_date= np.array([a for a in date_shift if a in date_intersection])
-			else:
-				sys.stdout.write('Dates/Number of shifts are not equal to the given image observing dates. Please check.\n')
-				return
 ############# CHECK if shift is estimated correctly! Do I need self.stacked+px_inc?
 ######################
-			print(shift_ra)
-			shift_ra = shift_ra/self.stacked_px_inc/3.6e6
-			shift_dec= shift_dec/self.stacked_px_inc/3.6e6
-			print(shift_ra)
-			self.blurImg = np.array([apply_shift(f,[sd,sr]) for f,sd,sr in zip(self.blurImg,shift_dec,shift_ra)])
+		if shiftFile is not None:
+			print(self.shift_ra)
+			self.shift_ra = self.shift_ra/self.stacked_px_inc/3.6e6
+			self.shift_dec= self.shift_dec/self.stacked_px_inc/3.6e6
+			print(self.shift_ra)
+			self.blurImg = np.array([apply_shift(f,[sd,sr]) for f,sd,sr in zip(self.blurImg,self.shift_dec,self.shift_ra)])
 	
 		self.stackedImg	= self.blurImg.sum(axis=0)/len(self.blurImg)*self.stacked_ppb
 	
@@ -105,7 +118,7 @@ class stackedImage():
 	def write_out(self,outfile='stackedImage.fits'):
 		hdr	= fits.Header(self.header[0])
 		hdr['RMS']	= (estimate_noise(self.stackedImg),'estimated Gaussian noise')
-		hdr['NOISE'] = (np.sum(self.noise_difmap)/len(self.noise_difmap),'averaged mean of map noises')
+		hdr['NOISE'] = (np.sum(self.noise_difmap)/len(self.noise_difmap),'averaged median of map noises')
 		hdr['CDELT1']	= (-self.stacked_px_inc,'Pixel increment (degrees)')
 		hdr['CDELT2']	= (self.stacked_px_inc,'Pixel increment (degrees)')
 		hdr['BMAJ']		= (self.stacked_beam*180/np.pi,'Stacked beam major (degrees)')

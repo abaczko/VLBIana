@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from VLBIana.modules.jet_calculus import *
 from astropy.table import Table
 from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition, mark_inset)
 import os,sys
 from glob import glob
 from VLBIana.modules.plot_functions import *
 from VLBIana.modules.cleanMap import *
-from ridgeLine import *
+from VLBIana.modules.jet_calculus import *
+from VLBIana.ridgeline.ridgeLine import *
 
-def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=False,**kwargs):
+def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs):
 
 	args = {'xr'				: False,
 					'yr'				: False,
@@ -32,6 +32,7 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 					'errorFile':False,
 					'multiL' : False,
 					'plot_stacked' : False,
+					'shiftFile': False,
 					'sigma' : [4]}
 	args.update(kwargs)
 
@@ -58,8 +59,6 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 		logFile.append(args['add_rl'][2])
 		label.append(args['add_rl'][3])
 
-	relative_shifts = Table.read(shiftFile, format='ascii')
-	print (relative_shifts)
 	header				= [read_header(m) for m in mapFile]
 	px_inc				= [h['CDELT2'] for h in header]
 	naxis					= [h['NAXIS1'] for h in header]
@@ -70,9 +69,23 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 	fov			= [pxi*na*3.6e6 for pxi,na in zip(px_inc,naxis)]
 
 	flux_uncertainty = 0.15
-	shiftRA,shiftDEC = readShift(shiftFile)
 	theta = theta*np.pi/180
-	Ridge = [RidgeLine(RL,log,cmap,shift=(shiftra,shiftdec),incl=args['incl']) for RL,log,cmap,shiftra,shiftdec in zip(ridgeLine,logFile,mapFile,shiftRA,shiftDEC)]
+	if args['shiftFile']:
+		relative_shifts = Table.read(args['shiftFile'], format='ascii')
+		sys.stdout.write('The following shifts have been read and will be used for aligning the ridgelines.\n')
+		sys.stdout.write('{}'.format(relative_shifts))
+		shiftRA,shiftDEC = readShift(args['shiftFile'])
+		DistStr = 'Distshift'
+		RAStr = 'RAshift'
+		DecStr = 'Decshift'
+		Ridge = [RidgeLine(RL,log,cmap,shift=(shiftra,shiftdec),incl=args['incl']) for RL,log,cmap,shiftra,shiftdec in zip(ridgeLine,logFile,mapFile,shiftRA,shiftDEC)]
+	else:
+		sys.stdout.write('No shifts will be applied to ridge-lines.\n')
+		Ridge = [RidgeLine(RL,log,cmap,incl=args['incl']) for RL,log,cmap in zip(ridgeLine,logFile,mapFile)]
+		DistStr = 'Dist'
+		RAStr = 'RA'
+		DecStr = 'Dec'
+
 	if args['errorFile']:
 		sys.stdout.write('Use errorfile')
 		ridgelines = [RL.readRidgeline(theta,widthErr=eF) for RL,eF in zip(Ridge,args['errorFile'])]
@@ -83,13 +96,12 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 		ridgelinesbinned = [RL.binRidgeLine() for RL in Ridge]
 		ridgelines = ridgelinesbinned
 
-	#ridgelines = [RidgeLine(RL,log,cmap,shift=(shiftra,shiftdec),incl=args['incl']).readRidgeline(theta) for RL,log,cmap,shiftra,shiftdec in zip(ridgeLine,logFile,mapFile,shiftRA,shiftDEC)]
 	i=0
 	Jet,CJet = [],[]
 	for rl in ridgelines:
 	#	rl['Freq']			= freqs[i]*len(rl['Xpos'])
-		Jet.append(rl[np.sign(rl['Distshift'])==1])
-		CJet.append(rl[np.sign(rl['Distshift'])==-1])
+		Jet.append(rl[np.sign(rl[DistStr])==1])
+		CJet.append(rl[np.sign(rl[DistStr])==-1])
 		i+=1
 	
 
@@ -107,8 +119,13 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 		mod_flux  = [m['FLUX'][np.where(mmaj!=0)] for m,mmaj in zip(mmod,mod_maj)]
 		mod_min   = [m['MINOR AX'][np.where(mmaj!=0)]*3.6e6 for m,mmaj in zip(mmod,mod_maj)]
 		mod_beam  = [[h['BMAJ']*3.6e6,h['BMIN']*3.6e6,h['BPA']] for h in mheader]
-		mod_x			= [m['DELTAX'][np.where(mmaj!=0)]*3.6e6+rs for m,rs,mmaj in zip(mmod,relative_shifts['RA'],mod_maj)]
-		mod_y			= [m['DELTAY'][np.where(mmaj!=0)]*3.6e6+rs for m,rs,mmaj in zip(mmod,relative_shifts['DEC'],mod_maj)]
+		if args['shiftFile']:
+			mod_x			= [m['DELTAX'][np.where(mmaj!=0)]*3.6e6+rs for m,rs,mmaj in zip(mmod,relative_shifts['RA'],mod_maj)]
+			mod_y			= [m['DELTAY'][np.where(mmaj!=0)]*3.6e6+rs for m,rs,mmaj in zip(mmod,relative_shifts['DEC'],mod_maj)]
+		else:
+			mod_x			= [m['DELTAX'][np.where(mmaj!=0)]*3.6e6 for m,mmaj in zip(mmod,mod_maj)]
+			mod_y			= [m['DELTAY'][np.where(mmaj!=0)]*3.6e6 for m,mmaj in zip(mmod,mod_maj)]
+
 		mod_r			= [np.sign(mx)*np.sqrt(mx**2+my**2) for mx,my in zip(mod_x,mod_y)]
 		ind				= [m.argsort() for m in mod_r]
 		mod_maj		= [m[np.where(m!=0)] for m in mod_maj]
@@ -126,19 +143,16 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 
 	xData	=	[rl['Xpos'].copy() for rl in ridgelines]
 	yData	=	[rl['Ypos'].copy() for rl in ridgelines]
-	Dist	= [rl['Dist'].copy() for rl in ridgelines]
+	Dist	= [rl[DistStr].copy() for rl in ridgelines]
 	FWHM	= [rl['FWHM'].copy() for rl in ridgelines]
 	flux	= [rl['Peak'].copy() for rl in ridgelines]
 	FWHM_deconvolved = [rl['FWHMDeconvolved'].copy() for rl in ridgelines]
 	fwhm_error_deconvolved = [rl['FWHMDeconvolvedErr'].copy() for rl in ridgelines]
-	RA		= [rl['RA'].copy() for rl in ridgelines]
-	Dec		= [rl['Dec'].copy() for rl in ridgelines]
+	RA		= [rl[RAStr].copy() for rl in ridgelines]
+	Dec		= [rl[DecStr].copy() for rl in ridgelines]
 	RA_error	= [rl['RAErr'].copy() for rl in ridgelines]
 	Dec_error	= [rl['DecErr'].copy() for rl in ridgelines]
 
-	RA_shift	= [rl['RAshift'].copy() for rl in ridgelines]
-	Dec_shift	= [rl['Decshift'].copy() for rl in ridgelines]
-	Dist_shift= [rl['Distshift'].copy() for rl in ridgelines]
 	saveFile+='_shift'
 
 #
@@ -152,19 +166,22 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 		xmin	= args['xr'][0]
 		xmax	= args['xr'][1]
 	else:
-		xmin = np.min([np.min(x) for x in RA_shift])
-		xmax = np.max([np.max(x) for x in RA_shift])
+		xmin = np.min([np.min(x) for x in RA])
+		xmax = np.max([np.max(x) for x in RA])
 	if args['yr']:
 		ymin = args['yr'][0]
 		ymax = args['yr'][1]
 	else:
-		ymin = np.min([np.min(y) for y in Dec_shift])
-		ymax = np.max([np.max(y) for y in Dec_shift])
+		ymin = np.min([np.min(y) for y in Dec])
+		ymax = np.max([np.max(y) for y in Dec])
 	
 	##########################################
 	###### Produce the plots #################
 	##########################################
 	if args['plot_map']:
+		RAm		= [rl[RAStr].copy() for rl in ridgelines]
+		Decm		= [rl[DecStr].copy() for rl in ridgelines]
+
 		nn = len(mapFile)
 		if nn>1:
 			if args['multiL']:
@@ -245,8 +262,8 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 				plotBeam(maps_beam[i][1],maps_beam[i][0],maps_beam[i][2],ra_max[i],dec_min[i],ax[k,l])
 				cntr=ax[k,l].contour(xx[i],yy[i],cleanmap,linewidths=0.5,levels=lev[i],colors='grey',alpha=1) #,extent=extent[i],origin='lower',alpha=1)
 				cntr.set_norm(norm)
-				ax[k,l].scatter(RA[i],Dec[i],c='red',s=1,marker='.')
-				ax[k,l].errorbar(RA[i],Dec[i],yerr=Dec_error[i],xerr=RA_error[i],fmt='none',c='red',s=1,alpha=0.5,elinewidth=0.4)
+				ax[k,l].scatter(RAm[i],Decm[i],c='red',s=1,marker='.')
+				ax[k,l].errorbar(RAm[i],Decm[i],yerr=Dec_error[i],xerr=RA_error[i],fmt='none',c='red',s=1,alpha=0.5,elinewidth=0.4)
 			else:	
 				ax[k].axis(axe_ratio)
 				ax[k].set_xlim(ra_min[i],ra_max[i])
@@ -260,8 +277,8 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 				plotBeam(maps_beam[i][1],maps_beam[i][0],maps_beam[i][2],ra_max[i],dec_min[i],ax[k])
 				cntr=ax[k].contour(xx[i],yy[i],cleanmap,linewidths=0.5,levels=lev[i],colors='grey',alpha=1) #,extent=extent[i],origin='lower',alpha=1)
 				cntr.set_norm(norm)
-				ax[k].scatter(RA[i],Dec[i],c='red',s=1,marker='.')
-				ax[k].errorbar(RA[i],Dec[i],yerr=Dec_error[i],xerr=RA_error[i],fmt='none',c='red',alpha=0.5,elinewidth=0.4)
+				ax[k].scatter(RAm[i],Decm[i],c='red',s=1,marker='.')
+				ax[k].errorbar(RAm[i],Decm[i],yerr=Dec_error[i],xerr=RA_error[i],fmt='none',c='red',alpha=0.5,elinewidth=0.4)
 
 			i+=1
 			if k<ys-1:
@@ -301,8 +318,8 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 
 		i=0
 		for rl,m in zip(ridgelines,markers):
-			ax.scatter(RA_shift[i],Dec_shift[i],s=1,marker='.',label=label[i],alpha=0.6)
-			ax.errorbar(RA_shift[i],Dec_shift[i],yerr=Dec_error[i],xerr=RA_error[i],fmt='none',alpha=0.3,label='_nolegend_',elinewidth=0.4)
+			ax.scatter(RA[i],Dec[i],s=1,marker='.',label=label[i],alpha=0.6)
+			ax.errorbar(RA[i],Dec[i],yerr=Dec_error[i],xerr=RA_error[i],fmt='none',alpha=0.3,label='_nolegend_',elinewidth=0.4)
 
 			i+=1
 			
@@ -323,18 +340,18 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 		if args['plot_deconvolved']:
 			axesWidthPlot(ax[0],ylabel='De-convolved Jet width [mas]',xlabel='Distance along jet [mas]',secxax='Distance along jet [$R_\mathrm{S}$]',secyax='De-convolved Jet width [$R_\mathrm{S}$]',xscale='linear')
 			for rl,m in zip(ridgeLine,markers):
-				ax[0].scatter(Dist_shift[i],FWHM_deconvolved[i],s=2,marker=m,label='{}'.format(label[i]))
+				ax[0].scatter(Dist[i],FWHM_deconvolved[i],s=2,marker=m,label='{}'.format(label[i]))
 				if args['errorbars']:
-					ax[0].errorbar(Dist_shift[i],FWHM_deconvolved[i],yerr=fwhm_error_deconvolved[i],fmt='none',elinewidth=0.2,errorevery=1,label='_nolegend_',alpha=0.4)
+					ax[0].errorbar(Dist[i],FWHM_deconvolved[i],yerr=fwhm_error_deconvolved[i],fmt='none',elinewidth=0.2,errorevery=1,label='_nolegend_',alpha=0.4)
 				i+=1
 			ax[0].set_ylim(1e-3,ymax*1.1)
 			saveFile+='_jet_width+flux_deconvolved'
 		else:
 			axesWidthPlot(ax[0],ylabel='Jet width [mas]',xlabel='Distance along jet [mas]',secxax='Distance along jet [$R_\mathrm{S}$]',secyax='Jet width [$R_\mathrm{S}$]',xscale='linear',yscale='linear')
 			for rl,m in zip(ridgeLine,markers):
-				ax[0].scatter(Dist_shift[i],FWHM[i],s=2,marker=m,label='{}'.format(label[i]))
+				ax[0].scatter(Dist[i],FWHM[i],s=2,marker=m,label='{}'.format(label[i]))
 				if args['errorbars']:
-					ax[0].errorbar(Dist_shift[i],FWHM[i],yerr=fwhm_error[i],fmt='none',elinewidth=0.4,errorevery=1,label='_nolegend_',alpha=0.4)
+					ax[0].errorbar(Dist[i],FWHM[i],yerr=fwhm_error[i],fmt='none',elinewidth=0.4,errorevery=1,label='_nolegend_',alpha=0.4)
 				if args['plot_beam']:
 					ax[0].plot(np.linspace(xmax-0.1*xmax,xmin),np.linspace(maps_beam[i][0],maps_beam[i][0]),linestyle=':',alpha=0.6,label='_nolegend_')
 				else:
@@ -356,9 +373,9 @@ def ridgeline_plotter(mapF,ridgeL,shiftFile,saveFile,lab,theta,logF,modFile=Fals
 	
 		ax[1].xaxis.set_minor_locator(AutoMinorLocator())
 		for rl,m in zip(ridgeLine,markers):
-			ax[1].scatter(Dist_shift[i],flux[i],s=2,marker=m,label='{}'.format(label[i]))
+			ax[1].scatter(Dist[i],flux[i],s=2,marker=m,label='{}'.format(label[i]))
 			if args['errorbars']:
-				ax[1].errorbar(Dist_shift[i],flux[i],yerr=flux_error[i],fmt='none',elinewidth=0.4,errorevery=1,label='_nolegend_',alpha=0.4)
+				ax[1].errorbar(Dist[i],flux[i],yerr=flux_error[i],fmt='none',elinewidth=0.4,errorevery=1,label='_nolegend_',alpha=0.4)
 			i+=1
 		
 		ax[1].set_xlim(xmax*1.1,xmin*1.1)
