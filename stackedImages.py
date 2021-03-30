@@ -29,7 +29,7 @@ def read_shift(shiftFile):
 	'''
 	with fits.open(shiftFile) as hdul:
 		data=hdul[1].data
-	return -data.dx,-data.dy,data.date
+	return data.dx,data.dy,data.date
 	
 
 def apply_shift(img,shift):
