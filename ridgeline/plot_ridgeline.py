@@ -33,6 +33,7 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 					'multiL' : False,
 					'plot_stacked' : False,
 					'shiftFile': False,
+					'overplot_rl': True,
 					'sigma' : [4]}
 	args.update(kwargs)
 
@@ -58,6 +59,13 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 		ridgeLine.append(args['add_rl'][1])
 		logFile.append(args['add_rl'][2])
 		label.append(args['add_rl'][3])
+		if args['errorFile']:
+			args['errorFile'].append(args['add_rl'][4])
+		n = len(ridgeLine)
+		colors = cmap(np.linspace(0,0.95,n))
+		colors = colors[len(colors)-n:]
+		colors[n-1]=[0.8,0.5,0.5,1]
+		mpl.rcParams['axes.prop_cycle'] = cycler(color=colors)
 
 	header				= [read_header(m) for m in mapFile]
 	px_inc				= [h['CDELT2'] for h in header]
@@ -95,7 +103,6 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 	if args['binRidgeLine']:
 		ridgelinesbinned = [RL.binRidgeLine() for RL in Ridge]
 		ridgelines = ridgelinesbinned
-
 	i=0
 	Jet,CJet = [],[]
 	for rl in ridgelines:
@@ -104,8 +111,6 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 		CJet.append(rl[np.sign(rl[DistStr])==-1])
 		i+=1
 	
-
-
 	if args['plot_reslimit']:
 		mmod,mheader,mimg=[],[],[]
 		for ff in modFile:
@@ -202,8 +207,8 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 				ra  = [FOV/3 for FOV in fov]
 				dec = [FOV/5 for FOV in fov]
 			else:
-				ra	= args['ra_lim']
-				dec	= args['dec_lim']
+				ra	= [args['ra_lim']]
+				dec	= [args['dec_lim']]
 		
 		ra_min=[-rr for rr in ra]
 		ra_max=ra
@@ -228,7 +233,8 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 			if nn % 2:
 				xs = 1
 				ys = nn
-				args['fig_size']='aanda'
+				if args['fig_size']=='aanda*':
+					args['fig_size']='aanda'
 
 			else:
 				xs = 2
@@ -238,10 +244,12 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 			ys = 1
 
 		if np.logical_or(xs>1,ys>1):
-			f,ax = plt.subplots(ys,xs,figsize=set_size(args['fig_size'],subplots=(ys,xs)))
+			figsize=set_size(args['fig_size'],subplots=(ys,xs))
+			#figsize = set_scaled_size(args['fig_size'],subplots=(ys,xs))
 		else:
-			f,ax = plt.subplots(ys,xs,figsize=set_size(args['fig_size']))
+			figsize=set_size(args['fig_size'])
 
+		f,ax = plt.subplots(ys,xs)
 		axe_ratio='scaled'
 		k=0
 		l=0
@@ -257,28 +265,42 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 				ax[k,l].set_xlim(ra_min[i],ra_max[i])
 				ax[k,l].set_ylim(dec_min[i],dec_max[i])
 				ax[k,l].invert_xaxis()
-				ax[k,l].annotate('VLBA {0:.1f} GHz'.format(freqs[i]), xy=(0.65,0.9),xycoords='axes fraction',color='black',fontsize=args['asize'],bbox=bbox_props)
+				ax[k,l].annotate(label[i], xy=(0.65,0.9),xycoords='axes fraction',color='black',fontsize=args['asize'],bbox=bbox_props)
 		
 				plotBeam(maps_beam[i][1],maps_beam[i][0],maps_beam[i][2],ra_max[i],dec_min[i],ax[k,l])
 				cntr=ax[k,l].contour(xx[i],yy[i],cleanmap,linewidths=0.5,levels=lev[i],colors='grey',alpha=1) #,extent=extent[i],origin='lower',alpha=1)
 				cntr.set_norm(norm)
-				ax[k,l].scatter(RAm[i],Decm[i],c='red',s=1,marker='.')
-				ax[k,l].errorbar(RAm[i],Decm[i],yerr=Dec_error[i],xerr=RA_error[i],fmt='none',c='red',s=1,alpha=0.5,elinewidth=0.4)
-			else:	
+				if args['overplot_rl']:
+					ax[k,l].scatter(RAm[i],Decm[i],c='red',s=1,marker='.')
+					ax[k,l].errorbar(RAm[i],Decm[i],yerr=Dec_error[i],xerr=RA_error[i],fmt='none',c='red',alpha=0.5,elinewidth=0.4)
+			elif np.logical_or(xs>1,ys>1):
 				ax[k].axis(axe_ratio)
 				ax[k].set_xlim(ra_min[i],ra_max[i])
 				ax[k].set_ylim(dec_min[i],dec_max[i])
 				ax[k].invert_xaxis()
-				if args['plot_stacked']:
-					ax[k].annotate('VLBA {0:.1f} GHz stacked'.format(freqs[i]), xy=(0.60,0.9),xycoords='axes fraction',color='black',fontsize=args['asize'],bbox=bbox_props)
-				else:
-					ax[k].annotate('VLBA {0:.1f} GHz'.format(freqs[i]), xy=(0.65,0.9),xycoords='axes fraction',color='black',fontsize=args['asize'],bbox=bbox_props)
-	
 				plotBeam(maps_beam[i][1],maps_beam[i][0],maps_beam[i][2],ra_max[i],dec_min[i],ax[k])
 				cntr=ax[k].contour(xx[i],yy[i],cleanmap,linewidths=0.5,levels=lev[i],colors='grey',alpha=1) #,extent=extent[i],origin='lower',alpha=1)
 				cntr.set_norm(norm)
-				ax[k].scatter(RAm[i],Decm[i],c='red',s=1,marker='.')
-				ax[k].errorbar(RAm[i],Decm[i],yerr=Dec_error[i],xerr=RA_error[i],fmt='none',c='red',alpha=0.5,elinewidth=0.4)
+				if args['overplot_rl']:
+					ax[k].scatter(RAm[i],Decm[i],c='red',s=1,marker='.')
+					ax[k].errorbar(RAm[i],Decm[i],yerr=Dec_error[i],xerr=RA_error[i],fmt='none',c='red',alpha=0.5,elinewidth=0.4)
+
+				if args['plot_stacked']:
+					ax[k].annotate('VLBA {0:.1f} GHz stacked'.format(freqs[i]), xy=(0.5,0.8),xycoords='axes fraction',color='black',fontsize=args['asize'],bbox=bbox_props)
+				else:
+					ax[k].annotate(label[i], xy=(0.5,0.8),xycoords='axes fraction',color='black',fontsize=args['asize'],bbox=bbox_props)
+			else:	
+				ax.axis(axe_ratio)
+				ax.set_xlim(ra_min[i],ra_max[i])
+				ax.set_ylim(dec_min[i],dec_max[i])
+				ax.invert_xaxis()
+				plotBeam(maps_beam[i][1],maps_beam[i][0],maps_beam[i][2],ra_max[i],dec_min[i],ax)
+				cntr=ax.contour(xx[i],yy[i],cleanmap,linewidths=1,levels=lev[i],colors='grey',alpha=1) #,extent=extent[i],origin='lower',alpha=1)
+				cntr.set_norm(norm)
+				if args['overplot_rl']:
+					ax.scatter(RAm[i],Decm[i],c='red',s=2,marker='.')
+					ax.errorbar(RAm[i],Decm[i],yerr=Dec_error[i],xerr=RA_error[i],fmt='none',c='red',alpha=0.5,elinewidth=0.4)
+				ax.annotate(label[i], xy=(0.7,0.9),xycoords='axes fraction',color='black',fontsize=args['asize']+3,bbox=bbox_props)
 
 			i+=1
 			if k<ys-1:
@@ -302,15 +324,17 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 				ax.minorticks_on()
 				ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
 				ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-
-		saveFile+='_overplot'
+		if args['overplot_rl']:
+			saveFile+='_overplot'
+		set_corrected_size(f,figsize)
 	
 ###########################
 	if args['plot_rl']:
 		######
 		if args['fig_size']=='aanda*':
 			args['fig_size']='aanda'
-		f,ax=plt.subplots(figsize=set_size(args['fig_size']))
+		f,ax=plt.subplots()
+		figsize=set_size(args['fig_size'])
 		axe_ratio='scaled'
 		ax.axis(axe_ratio)
 		plt.xlabel('RA [mas]')
@@ -328,11 +352,14 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 		handles, labels = ax.get_legend_handles_labels()
 		ax.legend(handles,labels,loc=0,markerscale=2)
 		ax.minorticks_on()
+		set_corrected_size(f,figsize)
+
 #############################################		
 	elif args['plot_width']:
 		ymin = 1e-1
 		ymax = max([max(f) for f in FWHM])#20
-		f,ax=plt.subplots(2,1,figsize=set_size(args['fig_size'],subplots=(2,1)),sharex=True,gridspec_kw={'hspace': 0})
+		f,ax=plt.subplots(2,1,sharex=True,gridspec_kw={'hspace': 0})
+		figsize=set_size(args['fig_size'],subplots=(2,1))
 		axesWidthPlot(ax[1],ylabel='Peak Flux density [mJy/beam]',xlabel='Distance along jet [mas]',xscale='linear')
 
 		i=0
@@ -385,6 +412,8 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 		ax[0].legend(handles,labels,loc=0,markerscale=2)
 		handles, labels = ax[1].get_legend_handles_labels()
 		ax[1].legend(handles,labels,loc=0,markerscale=2)
+
+	set_corrected_size(f,figsize)
 	saveFile = saveFile+'.'+args['fig_extension']
 	plt.savefig(saveFile,bbox_inches='tight')
 	sys.stdout.write('Saved plot to file: {}\n'.format(saveFile))

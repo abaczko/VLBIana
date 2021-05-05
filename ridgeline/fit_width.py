@@ -10,7 +10,7 @@ import VLBIana.modules.fit_functions as ff
 from VLBIana.modules.plot_functions import *
 
 #plt.style.use('talkstyle')
-def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='Powerlaw',asize=7,plot_hist=False,write_fit_info=True,plot_res=True,plot_ang=True,plot_flux=False,fig_size='aanda*',add_rl=False,fig_extension='pdf',incl=90,binRidgeLine=False,fit_both_jets_together=True,errorFile=False,write_tex=False):
+def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='Powerlaw',asize=5,plot_hist=False,write_fit_info=True,plot_res=True,plot_ang=True,plot_flux=False,fig_size='aanda*',add_rl=False,fig_extension='pdf',incl=90,binRidgeLine=False,fit_both_jets_together=False,errorFile=False,write_tex=False):
 	''' To fit the width of a jet 
 	'''
 	if type(ridgeLine)==str:
@@ -33,9 +33,10 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
 		if errorFile:
 			errorFile.append(add_rl[4])
 		n = len(ridgeLine)
-		colors = cmap(np.linspace(0,0.95,n))
-		colors = colors[len(colors)-n:]
-		colors[n-1]=[0.8,0.5,0.5,1]
+		nn = 8
+		#colors = cmap(np.linspace(0,0.95,n))
+		#colors = colors[len(colors)-n:]
+		colors[n-1]=[0.9,0.4,0.4,1]
 		mpl.rcParams['axes.prop_cycle'] = cycler(color=colors)
 
 # get number of subplots
@@ -114,6 +115,7 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
 	if fit=='Powerlaw':
 		saveFile+='_powerlaw_'
 		if add_rl:
+			sys.stdout.write('Not using additional ridgeline for fitting\n')
 			betaJ,sd_betaJ,chi2J,out = ff.fit_pl(DistJ[:-1],fwhmJ[:-1],fwhmEJ[:-1])
 			betaCJ,sd_betaCJ,chi2CJ,out = ff.fit_pl(DistCJ[:-1],fwhmCJ[:-1],fwhmECJ[:-1])
 			beta,sd_beta,chi2,out = ff.fit_pl(X[:-1],Y[:-1],DY[:-1])
@@ -125,6 +127,7 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
 	elif fit=='brokenPowerlaw':
 		saveFile+='_broken_powerlaw_'
 		if add_rl:
+			sys.stdout.write('Not using additional ridgeline for fitting\n')
 			betaJ,sd_betaJ,chi2J,out = ff.fit_bpl(DistJ[:-1],fwhmJ[:-1],fwhmEJ[:-1],x0=[0.3,0,1,3]) 
 			betaCJ,sd_betaCJ,chi2CJ,out = ff.fit_bpl(DistCJ[:-1],fwhmCJ[:-1],fwhmECJ[:-1],x0=[0.1,0,1,3])
 		else:
@@ -144,7 +147,8 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
 	yrmin = -1
 	yrmax = 1
 
-	f,ax=plt.subplots(nsub,2,figsize=(set_size(fig_size,subplots=(nsub,2))),sharex='col',sharey='row',gridspec_kw={'hspace': 0, 'wspace': 0})
+	f,ax=plt.subplots(nsub,2,sharex='col',sharey='row',gridspec_kw={'hspace': 0, 'wspace': 0})
+	figsize=(set_size(fig_size,subplots=(nsub,2)))
 	axesWidthPlot(ax[0,0],secxax=r'Distance from core [$R_\mathrm{S}$]',secyax=r'Jet width \small{[$R_\mathrm{S}$]}')
 	axesWidthPlot(ax[0,1],secxax=r'Distance from core [$R_\mathrm{S}$]',secyax=r'Jet width \small{[$R_\mathrm{S}$]}',ylabel=False)
 	for axs in ax.flatten():
@@ -176,13 +180,13 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
 #	ax[1,1].set_yscale('log')
 
 
-	ax[0,0].annotate('Eastern Jet', xy=(0.7,0.9),xycoords='axes fraction',size=asize+1)
-	ax[0,1].annotate('Western Jet', xy=(0.7,0.9),xycoords='axes fraction',size=asize+1)
+	ax[0,0].annotate('Eastern Jet', xy=(0.7,0.9),xycoords='axes fraction',size=asize+2)
+	ax[0,1].annotate('Western Jet', xy=(0.7,0.9),xycoords='axes fraction',size=asize+2)
 
 
 ########### Now do the plotting ######
-	plot_fit(xr,fit,betaJ,sd_betaJ,chi2J,ax=ax[0,0],annotate=write_fit_info)
-	plot_fit(xr,fit,betaCJ,sd_betaCJ,chi2CJ,ax=ax[0,1],annotate=write_fit_info)
+	plot_fit(xr,fit,betaJ,sd_betaJ,chi2J,ax=ax[0,0],annotate=write_fit_info,asize=asize+1)
+	plot_fit(xr,fit,betaCJ,sd_betaCJ,chi2CJ,ax=ax[0,1],annotate=write_fit_info,asize=asize+1)
 
 	i=0
 #ax0
@@ -264,6 +268,8 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
 	if plot_hist:
 		ax[nr,0].autoscale()
 		ax[nr,1].autoscale()
+
+	set_corrected_size(f,figsize)
 	saveFile+='width+flux_fit'
 	saveFile = saveFile+'.'+fig_extension
 	plt.savefig(saveFile,bbox_inches='tight')
@@ -293,7 +299,8 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
 	
 		if fig_size == 'aanda*':
 			fig_size = 'aanda'
-		f,ax=plt.subplots(nsub,1,figsize=(set_size(fig_size,subplots=(nsub,1))),sharex='col',sharey='row',gridspec_kw={'hspace': 0, 'wspace': 0})
+		f,ax=plt.subplots(nsub,1,sharex='col',sharey='row',gridspec_kw={'hspace': 0, 'wspace': 0})
+		figsize=(set_size(fig_size,subplots=(nsub,1)))
 
 		if plot_hist:
 			add_subplot_unshare(ax[nh])
@@ -352,11 +359,12 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
 			plotHist(resw,ax[ph],plot_norm=True,color='red',xlabel='Weighted Residuals',asize=asize)
 		
 		handles, labels = ax[0].get_legend_handles_labels()
-		ax[0].legend(handles,labels,loc=0,markerscale=1.5)
+		ax[0].legend(handles,labels,loc=0,markerscale=1.5,prop={'size':asize})
 		ax[0].set_ylim(ymin,ymax)
 		ax[0].set_xlim(xmin,xmax)
 		saveFile = saveFile.split('.')[0]+'_both_jets'
 		saveFile = saveFile+'.'+fig_extension
+		set_corrected_size(f,figsize)
 		plt.savefig(saveFile,bbox_inches='tight')
 		sys.stdout.write('Saved plot to file: {}\n'.format(saveFile))
 

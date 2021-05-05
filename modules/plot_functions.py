@@ -15,22 +15,23 @@ from matplotlib.rcsetup import cycler
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,AutoMinorLocator,AutoLocator,ScalarFormatter,FuncFormatter)
 from matplotlib.patches import Ellipse
 from math import log10,floor,ceil
+from matplotlib.colors import LogNorm
 #
 from VLBIana.modules.jet_calculus import *
 import VLBIana.modules.fit_functions as ff
 from VLBIana.modules.plotSet import *
 ###################################
-plt.style.use('talkstyle')
+#plt.style.use('pubstyle')
 default_cmap = 'gist_earth'
 colormap = 'inferno'
 mpl.rcParams['image.cmap'] = default_cmap
 cmap = cm.get_cmap(default_cmap)
 bbox_props = dict(boxstyle="square,pad=0.3",color='k',fill=None, lw=0.5)
-n=10
+n=8
 colors = cmap(np.linspace(0,0.95,n))
 asize = 8
 
-mm = ['x','>','2','+','.','<','d','p','*','o']
+mm = ['x','>','<','+','d','*','p','o','2']
 markers = cycle(mm)
 
 mpl.rcParams['axes.prop_cycle'] = cycler(color=colors)
@@ -84,7 +85,7 @@ def axesWidthPlot (ax, **kwargs):
 
 
 def plot_fit(x,fitfunc,beta,betaerr,chi2,ax=None,**kwargs):
-	args = {'color':'k', 'annotate':False,'asize':asize,'annox':0.7,'annoy':0.05,'lw':1}
+	args = {'color':'k', 'annotate':False,'asize':asize,'annox':0.6,'annoy':0.05,'lw':1}
 	args.update(kwargs)
 	ax = ax or plt.gca()
 	if fitfunc == 'scatter':
@@ -101,7 +102,7 @@ def plot_fit(x,fitfunc,beta,betaerr,chi2,ax=None,**kwargs):
 
 	ax.plot(x,function,'-'+args['color'],lw=args['lw'])
 	if args['annotate']:
-		ax.annotate(text, xy=(args['annox'],args['annoy']),xycoords='axes fraction',size=asize-1,horizontalalignment='left',verticalalignment='bottom',bbox=bbox_props)
+		ax.annotate(text, xy=(args['annox'],args['annoy']),xycoords='axes fraction',size=args['asize'],horizontalalignment='left',verticalalignment='bottom',bbox=bbox_props)
 
 def add_subplot_unshare(ax):
 	''' based on an answer from stacked overflow 
@@ -114,12 +115,15 @@ def add_subplot_unshare(ax):
 	ax.xaxis.set_major_formatter(xfmt)
 	ax.yaxis.set_tick_params(which='both', labelleft=True)
 
-def plotBeam(bmin,bmaj,bpos,ramax,decmin,ax=None):
+#########
+# I changed order bmaj, bmin !!!! check all plots!
+#########
+def plotBeam(bmaj,bmin,bpos,ramax,decmin,ax=None):
 	ax = ax or plt.gca()
 	ell_dist = 2
 	ell_x = ramax-bmaj*ell_dist
 	ell_y = decmin+bmaj*ell_dist
-	e = Ellipse([ell_x,ell_y],bmin,bmaj,-bpos+90, fc='grey',zorder=2)
+	e = Ellipse([ell_x,ell_y],bmaj,bmin,-bpos+90, fc='grey',zorder=2)
 	ax.add_artist(e)
 
 def privImshow(img,noise,extent,ax=None,**kwargs):
