@@ -118,7 +118,7 @@ def plot_aligned_maps(eht_maps,maps,masked_shift=False, **kwargs):
 	# cut out inner, optically thick part of the image
 	if 'npix_x' in kwargs.keys():
 		npix_x = kwargs.get('npix_x',False)
-		npix_x = kwargs.get('npix_x',False)
+		npix_y = kwargs.get('npix_y',False)
 		px_min_x = int(naxis/2-npix_x)
 		px_max_x = int(naxis/2+npix_x)
 		px_min_y = int(naxis/2-npix_y)

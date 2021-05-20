@@ -30,7 +30,7 @@ class RidgeLine(object):
 
 	def readMap(self):
 		Map = CleanMap(self.map)
-		self.cmap = Map.readHead()
+		self.cmap = Map.cmaph
 		return Map
 	
 	def readLog(self):

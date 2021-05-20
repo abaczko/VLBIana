@@ -33,7 +33,6 @@ class CleanMap(object):
 				else:
 					self.cmap = img
 
-	def readHead(self):
 		self.cmaph['noise']	= self.head['NOISE']
 		self.cmaph['px_inc']= self.head['CDELT2']
 		self.cmaph['naxis']	= self.head['NAXIS1']
@@ -41,7 +40,6 @@ class CleanMap(object):
 		self.cmaph['freq']	= np.around(self.head['crval3']*1e-9,1)
 		self.cmaph['ppb']		= [PXPERBEAM(self.cmaph['beam'][0]*np.pi/180,self.cmaph['beam'][1]*np.pi/180,self.cmaph['px_inc']*3.6e6*np.pi/180)]
 		self.cmaph['fov']		= self.cmaph['px_inc']*self.cmaph['naxis']*3.6e6
-		return self.cmaph
 
 	def modelFile(self, modelFile):
 		with fits.open(modelFile) as f:
@@ -53,7 +51,6 @@ class CleanMap(object):
 		self.modh['posa']		= self.modFile['POSANGLE']
 		
 	def plotMap(self,sigma=3,fig_size='screen',ra_lim=False,dec_lim=False,saveFile=False,plot_mod=False,plot_cntr=True,plot_color=False,cntr_color=False,model_color=False):
-		self.readHead()
 
 		if not cntr_color:
 			if plot_cntr:

@@ -191,6 +191,8 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
 	i=0
 #ax0
 	for rl,m in zip(ridgeLine,markers):
+		print (rl)
+		print(markers)
 		ax[0,0].scatter(DistJ[i],fwhmJ[i],s=4,marker=m,label='{}'.format(label[i]))
 		ax[0,0].errorbar(DistJ[i],fwhmJ[i],yerr=fwhmEJ[i],fmt='none',elinewidth=0.4,errorevery=1,label='_nolegend_',alpha=0.3)
 		ax[0,1].scatter(DistCJ[i],fwhmCJ[i],s=4,label='{}'.format(label[i]),marker=m)
