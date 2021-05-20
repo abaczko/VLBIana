@@ -76,7 +76,7 @@ def plot_aligned_maps(eht_maps,maps,masked_shift=False, **kwargs):
 	read in images
 	files		= eht_maps
 '''
-def plot_aligned_maps(eht_maps,maps,masked_shift=False, **kwargs):
+def plot_aligned_maps(eht_maps,maps,masked_shift=False, beam='max', **kwargs):
 	'''read in images
 	'''
 	files   = eht_maps
@@ -93,6 +93,25 @@ def plot_aligned_maps(eht_maps,maps,masked_shift=False, **kwargs):
 	noise1_r = noise1/ppb[0]*ppb_r
 	noise2_r = noise2/ppb[1]*ppb_r
 
+	if beam=='mean':
+		_maj = np.mean([maps_beam[-1][0],maps_beam[1][0]])
+		_min = np.mean([maps_beam[-1][1],maps_beam[1][1]])
+		_pos = np.mean([maps_beam[-1][2],maps_beam[1][2]])
+	if beam=='max':
+		_maj = np.max([maps_beam[-1][0],maps_beam[1][0]])
+		_min = np.max([maps_beam[-1][1],maps_beam[1][1]])
+		_pos = np.max([maps_beam[-1][2],maps_beam[1][2]])
+
+	if beam=='median':
+		_maj = np.median([maps_beam[-1][0],maps_beam[1][0]])
+		_min = np.median([maps_beam[-1][1],maps_beam[1][1]])
+		_pos = np.median([maps_beam[-1][2],maps_beam[1][2]])
+
+	if type(beam)==list:
+		_maj,_min,_pos = beam
+	
+	beam	= [_maj,_min,_pos]
+
 	if 'sigma' in kwargs.keys():
 		sigma = kwargs.get('sigma',False)
 	else:
@@ -101,8 +120,6 @@ def plot_aligned_maps(eht_maps,maps,masked_shift=False, **kwargs):
 	# regrid and blur the clean maps
 	#check for same fov and pixel size
 	if np.logical_and(maps_ps[0] != maps_ps[1], maps_fov[0]!=maps_fov[1]):
-	
-		beam	= maps_beam[0]
 		fov		= files[1].fovx()
 		naxis = header[1]['NAXIS1']
 		file1regrid			=	files[0].regrid_image(fov, naxis, interp='linear')
