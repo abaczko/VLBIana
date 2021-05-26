@@ -259,7 +259,7 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 			cleanmap = Map.cmap	
 			vmin=level0[i]
 			vmax=0.5*ma.amax(cleanmap)
-			norm = mpl.colors.SymLogNorm(linthresh=vmin,linscale=0.5,vmin=vmin,vmax=vmax)
+			norm = mpl.colors.SymLogNorm(linthresh=vmin,linscale=0.5,vmin=vmin,vmax=vmax,base=10)
 			if np.logical_and(xs>1,ys>1):	
 				ax[k,l].axis(axe_ratio)
 				ax[k,l].set_xlim(ra_min[i],ra_max[i])
@@ -413,7 +413,7 @@ def ridgeline_plotter(mapF,ridgeL,saveFile,lab,theta,logF,modFile=False,**kwargs
 		handles, labels = ax[1].get_legend_handles_labels()
 		ax[1].legend(handles,labels,loc=0,markerscale=2)
 
-	set_corrected_size(f,figsize)
+		set_corrected_size(f,figsize)
 	saveFile = saveFile+'.'+args['fig_extension']
 	plt.savefig(saveFile,bbox_inches='tight')
 	sys.stdout.write('Saved plot to file: {}\n'.format(saveFile))

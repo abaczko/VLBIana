@@ -136,3 +136,4 @@ class CleanMap(object):
 			plt.savefig(saveFile,bbox_inches='tight')
 		else:
 			plt.show()
+		return f,ax

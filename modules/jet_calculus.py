@@ -120,7 +120,7 @@ def Rs(m,return_pc=True):
 	return R 
 
 def mastopc(z):
-	cosmo=FlatLambdaCDM(H0=70.5,Om0=0.27)
+	cosmo=FlatLambdaCDM(H0=71,Om0=0.27) #Komatsu+09
 	D	= cosmo.angular_diameter_distance(z)
 	return (D*np.pi/180/3.6e6).to(u.parsec)
 #	return 1/(60*60*1e3)*D
@@ -151,3 +151,60 @@ def app_ang(width,z,sd=False):
 	#print(angErr)
 	return ang,angErr
 
+############
+#Code below to derive enclosing ellipse taken from isisscripts.sl
+def r_e(a,b,p,t,y=1.):
+	#distance from the origin to the point on ellipse at phase t
+	return np.sqrt(np.cos(t)**2*a**2*(np.cos(p)**2+y**2*np.sin(p)**2)+np.sin(t)**2*b**2*(y**2*np.cos(p)**2+np.sin(p)**2)+np.sin(t)*np.cos(t)*2*a*b*(y**2-1)*np.cos(p)*np.sin(p))
+
+def	t_m(a,b,p,y):
+	# phase parameter of ellipse where r_e is maximal (minimal?)
+	return 0.5*np.arctan( 2*a*b*np.cos(p)*np.sin(p)*(y**2-1.)/(a**2*(np.cos(p)**2+y**2*np.sin(p)**2)-b**2*(y**2*np.cos(p)**2+np.sin(p)**2)))
+
+def enclosing_ellipse(beam1,beam2):
+	bmaj1,bmin1,bpa1 = beam1
+	bmaj2,bmin2,bpa2 = beam2
+
+	if bmaj1 <= bmin2:
+		return (bmaj2,bmin2,bpa2)
+	if bmaj2 <= bmin1:
+		return (bmaj1,bmin1,bpa1)		
+	if np.logical_and.reduce((bmaj1==bmaj2,bmin1==bmin2,((bpa1-bpa2) % np.pi) == 0)):
+		return (bmaj1,bmin1,bpa1)
+
+	if bmaj2 < bmaj1:
+		tmp		= bmaj2
+		bmaj2 = bmaj1
+		bmaj1	= tmp
+		tmp		= bmin2
+		bmin2 = bmin1
+		bmin1	= tmp
+		tmp		= bpa2
+		bpa2 = bpa1
+		bpa1	= tmp
+
+	dpa = bpa1
+
+	bpa1 -= dpa
+	bpa2 -= dpa
+	
+	Y = bmaj1/bmin1
+	A = r_e(bmaj2,bmin2,bpa2,t_m(bmaj2,bmin2,bpa2,Y),y=Y)
+	B = max([r_e(bmaj2,bmin2,bpa2,t_m(bmaj2,bmin2,bpa2,Y)+0.5*np.pi,y=Y),bmaj1])
+  
+  #(mx,my)= ellipse (bmaj2,bmin2,bpa2,t_m(bmaj2,bmin2,bpa2,Y);y=Y)
+	(mx,my) = ellipse_perimeter(0,0,bmin2,bmaj2,orientation=bpa2)
+	P = np.arctan2(my,mx)
+ 
+	print(bmin2,bmaj2,bpa2)
+	print(A,B,P)
+	a = r_e(A,B,P,t_m(A,B,P,1./Y),y=1./Y)
+	b = r_e(A,B,P,t_m(A,B,P,1./Y)+0.5*np.pi,y=1./Y)
+ # (mx,my)= ellipse (A,B,P,t_m(A,B,P,1./Y),y=1./Y)
+	(mx,my) = ellipse_perimeter(0,0,A,B,orientation=P)
+	p = np.arctan2 (my,mx)
+	p += dpa
+
+	if b > a:
+		(a,b,p) = (b,a, p+0.5*np.pi) # make sure that 'a' is the semimajor axis
+	return (a,b,p % np.pi)		
