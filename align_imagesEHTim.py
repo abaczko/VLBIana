@@ -4,7 +4,7 @@ from numpy import *
 from scipy import *
 import numpy as np
 import numpy.ma as ma
-from mpl_toolkits.axes_grid1 import AxesGrid
+from mpl_toolkits.axes_grid1 import AxesGrid,make_axes_locatable
 import matplotlib.pyplot as plt
 from pylab import *
 import os
@@ -14,7 +14,6 @@ from skimage.registration import phase_cross_correlation
 from scipy.ndimage import fourier_shift
 from matplotlib.patches import Circle,Ellipse
 from skimage.draw import circle_perimeter,ellipse_perimeter
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from VLBIana.modules.plot_functions import *
 #import matplotlib.colors as colors
 #font = {'family' : 'normal',
@@ -77,7 +76,7 @@ def plot_aligned_maps(maps,maps,masked_shift=True, **kwargs):
 	read in images
 	files		= maps
 '''
-def plot_aligned_maps(maps,masked_shift=True, beam='max', fig_size='screen', **kwargs):
+def plot_aligned_maps(maps,masked_shift=True, beam='max', fig_size='aanda*', **kwargs):
 	'''Derive shifts and plot images
 	All angles are in rad and converted if needed.
 	If the beam is given explicitly, please write it in terms of mas
@@ -409,7 +408,8 @@ def plot_aligned_maps(maps,masked_shift=True, beam='max', fig_size='screen', **k
 		lev2.append(level20*2**i)
 
 	f,ax = plt.subplots()
-	
+	if fig_size=='aanda*':
+		fig_size='aanda'
 	cset = ax.contour(spix1,linewidths=[0.5],levels=lev1_r,colors=['grey'], extent=extent2,origin='lower',alpha=0.7)
 	im = ax.imshow(a,cmap='hot_r',origin='lower',extent= extent2,vmin=spix_vmin,vmax=spix_vmax)
 	divider = make_axes_locatable(ax)
