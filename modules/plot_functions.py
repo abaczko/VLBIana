@@ -118,12 +118,15 @@ def add_subplot_unshare(ax):
 #########
 # I changed order bmaj, bmin !!!! check all plots!
 #########
-def plotBeam(bmaj,bmin,bpos,ramax,decmin,ax=None):
+def plotBeam(bmaj,bmin,bpos,ramax,decmin,ax=None,color='grey'):
 	ax = ax or plt.gca()
 	ell_dist = 2
 	ell_x = ramax-bmaj*ell_dist
 	ell_y = decmin+bmaj*ell_dist
-	e = Ellipse([ell_x,ell_y],bmaj,bmin,-bpos+90, fc='grey',zorder=2)
+	if color:
+		e = Ellipse([ell_x,ell_y],bmaj,bmin,-bpos+90, fc=color,zorder=2)
+	else:
+		e = Ellipse([ell_x,ell_y],bmaj,bmin,-bpos+90, fc=color,zorder=2)
 	ax.add_artist(e)
 
 def privImshow(img,noise,extent,ax=None,**kwargs):

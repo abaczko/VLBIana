@@ -76,7 +76,7 @@ def plot_aligned_maps(maps,maps,masked_shift=True, **kwargs):
 	read in images
 	files		= maps
 '''
-def plot_aligned_maps(maps,masked_shift=True, beam='max', fig_size='aanda*', **kwargs):
+def plot_aligned_maps(maps,masked_shift=True, beam='max', fig_size='aanda*', plot_shifted=True,plot_spix=True,plot_convolved=True, **kwargs):
 	'''Derive shifts and plot images
 	All angles are in rad and converted if needed.
 	If the beam is given explicitly, please write it in terms of mas
@@ -84,8 +84,7 @@ def plot_aligned_maps(maps,masked_shift=True, beam='max', fig_size='aanda*', **k
 	if 'sigma' in kwargs.keys():
 		sigma = kwargs.get('sigma',False)
 	else:
-		sigma=1
-
+		sigma=3
 
 	files   = [eh.image.load_fits(m,aipscc=True) for m in maps]
 	fovx		= np.array([m.fovx() for m in files])
@@ -126,6 +125,10 @@ def plot_aligned_maps(maps,masked_shift=True, beam='max', fig_size='aanda*', **k
 		_min = np.median([maps_beam[0][1],maps_beam[1][1]])
 		_pos = np.median([maps_beam[0][2],maps_beam[1][2]])
 		sys.stdout.write(' Will use median beam.\n')
+	if beam=='circ':
+		_maj = np.median([maps_beam[0][0],maps_beam[1][0]])
+		_min = _maj
+		_pos = 0
 	if type(beam)==list:
 		_maj,_min,_pos = beam
 		_maj/=r2m
@@ -139,7 +142,7 @@ def plot_aligned_maps(maps,masked_shift=True, beam='max', fig_size='aanda*', **k
 
 	#derive common parameter
 
-	common_ps		= min(maps_ps)
+	common_ps		= maps_ps.min()
 	common_fov	= min([min(x,y) for x,y in zip(fovx,fovy)])
 	common_naxis= int(common_fov/common_ps)
 	common_ppb	= PXPERBEAM(common_beam[0],common_beam[1],common_ps)
@@ -236,47 +239,39 @@ def plot_aligned_maps(maps,masked_shift=True, beam='max', fig_size='aanda*', **k
 		sys.stdout.write('Will derive the shift using already masked images\n')
 		file2rb_shift=align(file1rbm,file2rbm,common_ps*180/np.pi*3.6e6,common_ps*180/np.pi*3.6e6)
 
-
-######################
-	#shift file2regridblur to found position
-	#file2regridblur_shift = apply_shift(np.flipud(file2regridblur.imarr(pol='I')),file2_shift['shift'])
-#	file2rb_shift = apply_shift(file2rb,file2_shift['shift'])
-#	file2rb_shift *= ppb_r
-###########################
-
+################################
 	file1_plt = files[0].regrid_image(fovx[0],naxis1[0]).blur_gauss(maps_beam[0],frac=1).imarr(pol='I')
 	file2_plt = files[1].regrid_image(fovx[1],naxis1[1]).blur_gauss(maps_beam[1],frac=1).imarr(pol='I')
-	file1_plt		= file1_plt*ppb[0]
-	file2_plt		= file2_plt*ppb[1]
+	file1_plt		*= ppb[0]
+	file2_plt		*= ppb[1]
 	file1rb_plt	= file1rb*common_ppb
 	file2rb_plt	= file2rb*common_ppb
 	file1rbm_plt	= file1rbm*common_ppb
 	file2rbm_plt	= file2rbm*common_ppb
 	file2rb_shift_plt = apply_shift(file2rb,file2rb_shift['shift'])* common_ppb
 
-	ra=file2regridblur.fovx()/eh.RADPERUAS/1e3/2
-	dec=file2regridblur.fovy()/eh.RADPERUAS/1e3/3
+	ra=(common_fov/eh.RADPERUAS/1e3/2)-1
+	#dec=common_fov/eh.RADPERUAS/1e3/3
+	dec = ra*7/10
 	ra_min=-ra
 	ra_max=ra
 	dec_min=-dec
 	dec_max=dec
 	scale1	= maps_ps[0]*180/np.pi*3.6e6
 	scale2	= maps_ps[1]*180/np.pi*3.6e6
+	scale_common = common_ps*180/np.pi*3.6e6
+
 
 	x1=np.linspace(-naxis1[0]*0.5*scale1,(naxis1[0]*0.5-1)*scale1,naxis1[0])
-	y1=np.linspace(naxis2[0]*0.5*scale1,-(naxis2[0]*0.5-1)*scale1,naxis2[0])
-	x2=np.linspace(-naxis1[1]*0.5*scale2,(naxis1[1]*0.5-1)*scale2,naxis1[1])
+	x2=np.linspace(naxis1[1]*0.5*scale2,-(naxis1[1]*0.5-1)*scale2,naxis1[1])
+	xc=np.linspace(common_naxis*0.5*scale_common,-(common_naxis*0.5-1)*scale_common,common_naxis)
+	y1=np.linspace(-naxis2[0]*0.5*scale1,(naxis2[0]*0.5-1)*scale1,naxis2[0])
 	y2=np.linspace(naxis2[1]*0.5*scale2,-(naxis2[1]*0.5-1)*scale2,naxis2[1])
+	yc=np.linspace(common_naxis*0.5*scale_common,-(common_naxis*0.5-1)*scale_common,common_naxis)
+
 	extent1 = np.max(x1), np.min(x1), np.min(y1), np.max(y1)
 	extent2 = np.max(x2), np.min(x2), np.min(y2), np.max(y2)
-	
-	f,ax = plt.subplots(2,2)
-	axe_ratio='scaled'
-
-	ax[0,0].set_title('{} GHz original'.format(freq1))
-	ax[0,1].set_title('{} GHz original'.format(freq2))
-	ax[1,0].set_title('{} GHz regrid $+$ blur'.format(freq1))
-	ax[1,1].set_title('{} GHz regrid $+$ blur'.format(freq2))
+	extentc = np.max(xc), np.min(xc), np.min(yc), np.max(yc)
 
 	level0	= min([noise1,noise2,noise1_r,noise2_r])*sigma
 	lev=[]
@@ -291,86 +286,169 @@ def plot_aligned_maps(maps,masked_shift=True, beam='max', fig_size='aanda*', **k
 	lev2_r=[]
 	for i in range(0,10):
 		lev2_r.append(level2r*2**i)
+	
+	axe_ratio='scaled'
+################# Plot 1 ##########################
+	if plot_convolved:
+		figsize=('aanda*')
+		f = plt.figure(constrained_layout=True)
+		gs = f.add_gridspec(2, 2, hspace=0, wspace=0)
+		ax = gs.subplots(sharex='col', sharey='row')
 
-	imax = max([ma.amax(ii) for ii in [file1_plt,file2_plt,file1rb_plt,file2rb_plt]])
-	norm = mpl.colors.SymLogNorm(linthresh=level0,linscale=0.5,vmin=level0,vmax=0.5*imax,base=10)
-	im1 = ax[0,0].imshow(file1_plt,cmap=colormap,norm=norm,extent=extent1)
-	im2 = ax[0,1].imshow(file2_plt,cmap=colormap,norm=norm,extent=extent2)
-	im3 = ax[1,0].imshow(file1rb_plt,cmap=colormap,norm=norm,extent=extent2)
-	im4 = ax[1,1].imshow(file2rb_plt,cmap=colormap,norm=norm,extent=extent2)
+		#f,ax = plt.subplots(2,2,sharex='col',sharey='row',gridspec_kw={'hspace':0,'wspace':0})
+	
+		l1 = '{} GHz original'.format(freq1)
+		l2 = '{} GHz original'.format(freq2)
+		l3 = '{} GHz regrid $+$ blur'.format(freq1)
+		l4 = '{} GHz regrid $+$ blur'.format(freq2)
+		label=[l1,l2,l3,l4]
 
-	divider = make_axes_locatable(ax[0,1])
-	cax = divider.append_axes('right', size='5%', pad='3%')
-	#cbar = f.colorbar(im,ax=ax[:])
-	cbar = f.colorbar(im2,cax=cax)
-	cbar.set_label('Flux Density [Jy/beam]')
+		imax = max([ma.amax(ii) for ii in [file1_plt,file2_plt,file1rb_plt,file2rb_plt]])
+		norm = mpl.colors.SymLogNorm(linthresh=level0*1e3,linscale=0.5,vmin=level0*1e3,vmax=0.5*imax*1e3,base=10)
+		im1 = ax[0,0].imshow(file1_plt*1e3,cmap=colormap,norm=norm,extent=extent1,zorder=1)
+		plotBeam(maps_beam[0][0]*r2m,maps_beam[0][1]*r2m,maps_beam[0][2]*180/np.pi,ra,-dec,ax=ax[0,0])
+		im2 = ax[0,1].imshow(file2_plt*1e3,cmap=colormap,norm=norm,extent=extent2,zorder=1)
+		plotBeam(maps_beam[1][0]*r2m,maps_beam[1][1]*r2m,maps_beam[1][2]*180/np.pi,ra,-dec,ax=ax[0,1])
+		im3 = ax[1,0].imshow(file1rb_plt*1e3,cmap=colormap,norm=norm,extent=extentc,zorder=1)
+		plotBeam(common_beam[0]*r2m,common_beam[1]*r2m,common_beam[2]*180/np.pi,ra,-dec,ax=ax[1,0])
+		im4 = ax[1,1].imshow(file2rb_plt*1e3,cmap=colormap,norm=norm,extent=extentc,zorder=1)
+		plotBeam(common_beam[0]*r2m,common_beam[1]*r2m,common_beam[2]*180/np.pi,ra,-dec,ax=ax[1,1])
 
-	divider = make_axes_locatable(ax[1,1])
-	cax = divider.append_axes('right', size='5%', pad='3%')
-	#cbar = f.colorbar(im,ax=ax[:])
-	cbar = f.colorbar(im4,cax=cax)
-	cbar.set_label('Flux Density [Jy/beam]')
+		cbar = f.colorbar(im1, ax=ax[:,:], location='top',pad=0.01,shrink=0.9,aspect=35)#,ticks=[1e-3,1e-2,1e-1,1])
+	#	cbar.ax.set_xticklabels([])
+		cbar.set_label(r'$S_\nu$ [mJy/beam]')
 
-	for aa in ax.flat:
-		aa.set(xlabel='RA [mas]', ylabel='Relative DEC [mas]')
-		aa.xaxis.set_minor_locator(AutoMinorLocator())
-		aa.yaxis.set_minor_locator(AutoMinorLocator())
-		aa.axis(axe_ratio)
-		aa.set_xlim(ra_max,ra_min)
-		aa.set_ylim(dec_min,dec_max)
-	figsize=set_size(fig_size,subplots=(2,2))
-	set_corrected_size(f,figsize)
-	plt.tight_layout(pad=0.4)
-	f.savefig(plotDir+'{:d}GHz_convolved_with_{:d}GHz.pdf'.format(int(freq2),int(freq1)))
+		for aa,ll in zip(ax.flat,label):
+			aa.xaxis.set_minor_locator(AutoMinorLocator())
+			aa.yaxis.set_minor_locator(AutoMinorLocator())
+			aa.axis(axe_ratio)
+			aa.set_xlim(ra_max,ra_min)
+			aa.set_ylim(dec_min,dec_max)
+			aa.annotate(ll, xy=(0.1,0.9),xycoords='axes fraction',size=7,color='w')
+			aa.tick_params(direction='in',which='both',color='w')
+		ax[0,0].set(ylabel='Dec [mas]')
+		ax[1,0].set(xlabel='RA [mas]',ylabel='Dec [mas]')
+		ax[1,1].set(xlabel='RA [mas]')
+		figsize=set_size(fig_size,subplots=(2,2),ratio=0.8)
+		set_corrected_size(f,figsize)
+		f.savefig(plotDir+'{:d}GHz_convolved_with_{:d}GHz.pdf'.format(int(freq2),int(freq1)),bbox_inches='tight')
 	
 ######################################################	
 	
 #	plt.cla()
-	f,ax = plt.subplots(2,2)
+	if plot_shifted:
+		figsize=('aanda*')
+		f = plt.figure(constrained_layout=True)
+		gs = f.add_gridspec(2, 2, hspace=0,wspace=0)
+		ax = gs.subplots(sharex='col',sharey='row')
 
+		l1 = '{}GHz regrid $+$ blur'.format(freq1)
+		l2 = '{}GHz regrid $+$ blur'.format(freq2)
+		l3 = '{0}GHz/ {1}GHz not shifted'.format(freq1,freq2)
+		l4 = '{0}GHz/ {1}GHz shifted'.format(freq1,freq2)
+		label=[l1,l2,l3,l4]
+
+		imax = max([ma.amax(ii) for ii in [file1rbm_plt,file2rbm_plt]])
+		norm = mpl.colors.SymLogNorm(linthresh=level0*1e3,linscale=0.5,vmin=level0*1e3,vmax=0.5*imax*1e3,base=10)
 	
-	ax[0,0].set_title('{}GHz regrid $+$ blur'.format(freq1))
-	ax[0,1].set_title('{}GHz regrid $+$ blur'.format(freq2))
-	ax[1,0].set_title('{0}GHz/ {1}GHz not shifted'.format(freq1,freq2))
-	ax[1,1].set_title('{0}GHz/ {1}GHz shifted'.format(freq1,freq2))
+		im1 = ax[0,0].imshow(file1rbm_plt*1e3,cmap=colormap,norm=norm,extent=extentc,zorder=1)
+		plotBeam(common_beam[0]*r2m,common_beam[1]*r2m,common_beam[2]*180/np.pi,ra,-dec,ax[0,0])
+		im2 = ax[0,1].imshow(file2rbm_plt*1e3,cmap=colormap,norm=norm,extent=extentc,zorder=1)
+		plotBeam(common_beam[0]*r2m,common_beam[1]*r2m,common_beam[2]*180/np.pi,ra,-dec,ax[0,1])
 
-	imax = max([ma.amax(ii) for ii in [file1rbm_plt,file2rbm_plt]])
-	norm = mpl.colors.SymLogNorm(linthresh=level0,linscale=0.5,vmin=level0,vmax=0.5*imax,base=10)
-
-	im = ax[0,0].imshow(file1rbm_plt,cmap=colormap,norm=norm,extent=extent2)
-	im = ax[0,1].imshow(file2rbm_plt,cmap=colormap,norm=norm,extent=extent2)
-	divider = make_axes_locatable(ax[0,1])
-	cax = divider.append_axes('right', size='5%', pad=0.05)
-	#cbar = f.colorbar(col, use_gridspec=True,cax=cax)
-	cbar = f.colorbar(im,cax=cax)
-	cbar.set_label('Flux Density [Jy/beam]')
-	#
-	cntr1=ax[1,0].contour(np.flipud(file1rb_plt),linewidths=0.5,levels=lev1_r,colors='grey',extent=extent2,alpha=1)
-	cntr2=ax[1,0].contour(np.flipud(file2rb_plt),linewidths=0.5,levels=lev2_r,colors='darkblue',extent=extent2,alpha=0.6)
-	h1,_ = cntr1.legend_elements()
-	h2,_ = cntr2.legend_elements()
-	ax[1,0].legend([h1[0],h2[0]],['{}GHz'.format(freq1),'{}GHz'.format(freq2)],loc='upper right')
-	#
-	cntr1=ax[1,1].contour(np.flipud(file1rb_plt),linewidths=0.5,levels=lev1_r,colors='grey',extent=extent2)
-	cntr2=ax[1,1].contour(np.flipud(file2rb_shift_plt),linewidths=0.5,levels=lev2_r,colors='darkblue',extent=extent2,alpha=0.6)
-	h1,_ = cntr1.legend_elements()
-	h2,_ = cntr2.legend_elements()
-	ax[1,1].legend([h1[0],h2[0]],['{}GHz'.format(freq1),'{}GHz'.format(freq2)],loc='upper right')
-
-	for aa in ax.flat:
-		aa.set(xlabel='RA [mas]', ylabel='Relative Declination [mas]')
-		aa.axis(axe_ratio)
-		aa.xaxis.set_minor_locator(AutoMinorLocator())
-		aa.yaxis.set_minor_locator(AutoMinorLocator())
-		aa.set_xlim(ra_max,ra_min)
-		aa.set_ylim(dec_min,dec_max)
+		cntr1=ax[1,0].contour(np.flipud(file1rb_plt),linewidths=0.5,levels=lev1_r,colors='grey',extent=extentc,alpha=1)
+		cntr2=ax[1,0].contour(np.flipud(file2rb_plt),linewidths=0.5,levels=lev2_r,colors='darkblue',extent=extentc,alpha=0.6)
+		h1,_ = cntr1.legend_elements()
+		h2,_ = cntr2.legend_elements()
+		ax[1,0].legend([h1[0],h2[0]],['{}GHz'.format(freq1),'{}GHz'.format(freq2)],loc=3,fontsize=8)
+		#
+		cntr1=ax[1,1].contour(np.flipud(file1rb_plt),linewidths=0.5,levels=lev1_r,colors='grey',extent=extent2)
+		cntr2=ax[1,1].contour(np.flipud(file2rb_shift_plt),linewidths=0.5,levels=lev2_r,colors='darkblue',extent=extent2,alpha=0.6)
+		h1,_ = cntr1.legend_elements()
+		h2,_ = cntr2.legend_elements()
+		ax[1,1].legend([h1[0],h2[0]],['{}GHz'.format(freq1),'{}GHz'.format(freq2)],loc=3,fontsize=8)
 	
-	figsize=set_size(fig_size,subplots=(2,2))
-	set_corrected_size(f,figsize)
-	plt.tight_layout(pad=0.4)
-	f.savefig(plotDir+'shifted_maps_{:d}GHz_{:d}GHz.pdf'.format(int(freq1),int(freq2)))
+##		cax = divider.append_axes('top', size='5%', pad=0.01)
+		cbar = f.colorbar(im1, ax=ax[:,:], location='top',pad=0.01,shrink=0.9,aspect=35)
+		cbar.set_label(r'$S_\nu$ [mJy/beam]')
+
+		for aa,ll in zip(ax.flat,label):
+			aa.axis(axe_ratio)
+			aa.xaxis.set_minor_locator(AutoMinorLocator())
+			aa.yaxis.set_minor_locator(AutoMinorLocator())
+			aa.set_xlim(ra_max,ra_min)
+			aa.set_ylim(dec_min,dec_max)
+			
+		ax[0,0].annotate(l1, xy=(0.1,0.9),xycoords='axes fraction',size=8,color='w')
+		ax[0,1].annotate(l2, xy=(0.1,0.9),xycoords='axes fraction',size=8,color='w')
+		ax[1,0].annotate(l3, xy=(0.1,0.9),xycoords='axes fraction',size=8)
+		ax[1,1].annotate(l4, xy=(0.1,0.9),xycoords='axes fraction',size=8)
+
+		ax[0,0].tick_params(direction='in',which='both',color='w')
+		ax[0,1].tick_params(direction='in',which='both',color='w')
+		ax[1,1].tick_params(direction='in',which='both',axis='y')
+		ax[0,0].set(ylabel='Dec [mas]')
+		ax[1,0].set(xlabel='RA [mas]',ylabel='Dec [mas]')
+		ax[1,1].set(xlabel='RA [mas]')
+	
+		figsize=set_size(fig_size,subplots=(2,2),ratio=0.8)
+		set_corrected_size(f,figsize)
+		f.savefig(plotDir+'shifted_maps_{:d}GHz_{:d}GHz.pdf'.format(int(freq1),int(freq2)),bbox_inches='tight')
 #########
-	plt.cla()
+#########################
+	# plot spix map
+	if plot_spix:
+		f,ax = plt.subplots()
+	#	if fig_size=='aanda*':
+	#		fig_size='aanda'
+
+		file1rb_plt = np.flipud(file1rb_plt)
+		file2rb_shift_plt = np.flipud(file2rb_shift_plt)
+		spix1 = file1rb_plt*(file1rb_plt > noise1*sigma) #replaces indices where condition is not met with 0
+		spix2 = file2rb_shift_plt*(file2rb_shift_plt > noise2*sigma)
+		spix1[spix1==0] = noise1*sigma
+		spix2[spix2==0] = noise2*sigma
+	
+		a = np.log10(spix2/spix1)/np.log10(freq2/freq1)
+	
+		spix_vmin,spix_vmax=-3,5
+		sys.stdout.write('\nSpectral index max(alpha)={} - min(alpha)={}\nCutoff {}<alpha<{}\n'.format(ma.amax(a),ma.amin(a),spix_vmin,spix_vmax))
+		a[a<spix_vmin] = spix_vmin
+		a[a>spix_vmax] = spix_vmax
+		a[spix2==noise2*sigma] =spix_vmin
+	
+		level10	= noise1*sigma
+		lev1=[]
+		level20	= noise2*sigma
+		lev2=[]
+		
+		for i in range(0,10):
+			lev1.append(level10*2**i)
+			lev2.append(level20*2**i)
+	
+		cset = ax.contour(spix1,linewidths=[0.5],levels=lev1_r,colors=['grey'], extent=extent2,origin='lower',alpha=0.7)
+		im = ax.imshow(a,cmap='hot_r',origin='lower',extent= extent2,vmin=spix_vmin,vmax=spix_vmax)
+		divider = make_axes_locatable(ax)
+		cax = divider.append_axes('right', size='5%', pad=0.05)
+		cbar = f.colorbar(im, use_gridspec=True,cax=cax)
+		cbar.set_label(r'Spectral index $\alpha$')
+		h1,_ = cset.legend_elements()
+		ax.legend([h1[0]],['{}GHz'.format(freq1)],loc=2)
+	
+		ax.axis('scaled')
+		ax.set_xlabel('RA [mas]')
+		ax.set_ylabel('Dec [mas]')
+		ax.set_xlim(ra_max,ra_min)
+		ax.set_ylim(dec_min,dec_max)
+		ax.minorticks_on()
+	
+		figsize=set_size(fig_size)
+		set_corrected_size(f,figsize)
+	
+		plt.savefig(plotDir+'spectral_index_between_{:d}_{:d}.pdf'.format(int(freq1),int(freq2)),bbox_inches='tight')
+#############################
+	plt.close('all')
+
 	shift_export=file2rb_shift['shift'].copy()
 	sys.stdout.write('final shift: {}'.format(shift_export))
 	shift_export[0]*=common_ps*180/np.pi*3.6e6
@@ -381,62 +459,7 @@ def plot_aligned_maps(maps,masked_shift=True, beam='max', fig_size='aanda*', **k
 		error_export=file2rb_shift['error'].copy()
 		error_export*=common_ps*180/np.pi*3.6e6
 		sys.stdout.write('shift in mas: {}\pm{}'.format(shift_export,error_export))
-#########################
-	# plot spix map
-	file1rb_plt = np.flipud(file1rb_plt)
-	file2rb_shift_plt = np.flipud(file2rb_shift_plt)
-	spix1 = file1rb_plt*(file1rb_plt > noise1*sigma) #replaces indices where condition is not met with 0
-	spix2 = file2rb_shift_plt*(file2rb_shift_plt > noise2*sigma)
-	spix1[spix1==0] = noise1*sigma
-	spix2[spix2==0] = noise2*sigma
 
-	a = np.log10(spix2/spix1)/np.log10(freq2/freq1)
-
-	spix_vmin,spix_vmax=-3,5
-	sys.stdout.write('\nSpectral index max(alpha)={} - min(alpha)={}\nCutoff {}<alpha<{}\n'.format(ma.amax(a),ma.amin(a),spix_vmin,spix_vmax))
-	a[a<spix_vmin] = spix_vmin
-	a[a>spix_vmax] = spix_vmax
-	a[spix2==noise2*sigma] =spix_vmin
-
-	level10	= noise1*sigma
-	lev1=[]
-	level20	= noise2*sigma
-	lev2=[]
-	
-	for i in range(0,10):
-		lev1.append(level10*2**i)
-		lev2.append(level20*2**i)
-
-	f,ax = plt.subplots()
-	if fig_size=='aanda*':
-		fig_size='aanda'
-	cset = ax.contour(spix1,linewidths=[0.5],levels=lev1_r,colors=['grey'], extent=extent2,origin='lower',alpha=0.7)
-	im = ax.imshow(a,cmap='hot_r',origin='lower',extent= extent2,vmin=spix_vmin,vmax=spix_vmax)
-	divider = make_axes_locatable(ax)
-	cax = divider.append_axes('right', size='5%', pad=0.05)
-	cbar = f.colorbar(im, use_gridspec=True,cax=cax)
-	cbar.set_label(r'Spectral index $\alpha$')
-	h1,_ = cset.legend_elements()
-	ax.legend([h1[0]],['{}GHz'.format(freq1)],loc='upper right')
-
-	ax.axis('scaled')
-	ax.set_xlabel('RA [mas]')
-	ax.set_ylabel('Relative Dec [mas]')
-	ax.set_xlim(ra_max,ra_min)
-	ax.set_ylim(dec_min,dec_max)
-	ax.minorticks_on()
-	#ax.tick_params('both', length=8, width=2, which='major')
-	#f.tick_params(axis='both',which='both',direction='in', labelsize=13)
-
-#	cb = plt.colorbar(im,cax=cax,cmap='jet')
-#	cb.ax.tick_params(labelsize=13, width=2)
-#	cb.set_label(r'$\alpha$',fontsize=15)
-	figsize=set_size(fig_size)
-	set_corrected_size(f,figsize)
-
-	plt.savefig(plotDir+'spectral_index_between_{:d}_{:d}.pdf'.format(int(freq1),int(freq2)),bbox_inches='tight')
-	plt.close('all')
-############################
 	if masked_shift:
 		return {'file1':file1regridblur,'file2':file2regridblur,'shift':shift_export,'increment_dec':common_ps*3.6e6,'increment_ra':common_ps*3.6e6}
 	else:
