@@ -1,0 +1,17 @@
+# style file for matplotlib for publication in A&A
+
+text.usetex: True
+font.size : 11
+font.family: serif
+font.serif: Times
+
+legend.framealpha : 0.5
+legend.scatterpoints : 1
+legend.fontsize: 9
+axes.labelsize: 10
+xtick.labelsize : 8
+ytick.labelsize : 8
+
+figure.dpi : 300
+savefig.dpi : 300
+savefig.bbox : tight

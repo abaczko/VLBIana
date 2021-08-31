@@ -12,7 +12,7 @@ import matplotlib as mpl
 import sys
 from itertools import cycle
 from matplotlib.rcsetup import cycler
-from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,AutoMinorLocator,AutoLocator,ScalarFormatter,FuncFormatter)
+from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,AutoMinorLocator,AutoLocator,ScalarFormatter,FuncFormatter,MaxNLocator)
 from matplotlib.patches import Ellipse
 from math import log10,floor,ceil
 from matplotlib.colors import LogNorm
@@ -21,7 +21,8 @@ from VLBIana.modules.jet_calculus import *
 import VLBIana.modules.fit_functions as ff
 from VLBIana.modules.plotSet import *
 ###################################
-#plt.style.use('pubstyle')
+plt.style.use('pubstyle.mplstyle')
+
 default_cmap = 'gist_earth'
 colormap = 'inferno'
 mpl.rcParams['image.cmap'] = default_cmap
@@ -64,7 +65,7 @@ def plotHist(data,ax=None,**kwargs):
 		ax.annotate('$\mu ={:.1f}$ \n$std={:.1f}$'.format(mu,std),xy=args['acoord'],xycoords='axes fraction',size=args['asize'],horizontalalignment='left',verticalalignment='top')
 
 def axesWidthPlot (ax, **kwargs):
-	args ={'xlabel':r'Distance from core \small{[mas]}','ylabel':r'Jet width \small{[mas]}','xscale':'log','yscale':'log'}
+	args ={'xlabel':r'Distance from the core \small{[mas]}','ylabel':r'Jet width \small{[mas]}','xscale':'log','yscale':'log'}
 	args.update(kwargs)
 
 	xlabel = args['xlabel']
@@ -124,9 +125,9 @@ def plotBeam(bmaj,bmin,bpos,ramax,decmin,ax=None,color='grey'):
 	ell_x = ramax-bmaj*ell_dist
 	ell_y = decmin+bmaj*ell_dist
 	if color:
-		e = Ellipse([ell_x,ell_y],bmaj,bmin,-bpos+90, fc=color,zorder=2)
+		e = Ellipse([ell_x,ell_y],bmaj,bmin,-bpos, fc=color,zorder=2)
 	else:
-		e = Ellipse([ell_x,ell_y],bmaj,bmin,-bpos+90, fc=color,zorder=2)
+		e = Ellipse([ell_x,ell_y],bmaj,bmin,-bpos, fc=color,zorder=2)
 	ax.add_artist(e)
 
 def privImshow(img,noise,extent,ax=None,**kwargs):
