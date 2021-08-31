@@ -12,10 +12,10 @@ It has only been tested on a small amount of datasets, so you may have to change
 For the imported modules to be found the repository has to been added to the local PYTHONPATH variable.
 
 ## Requirenments
-- astropy, numpy
+- astropy, numpy, scikit-image
 - The script align_imagesEHTim.py requires the eht-imageing module, which can be obtained from https://github.com/achael/eht-imaging.git
 - The script plotSet.py for setting the figure dimensions is taken from https://jwalton.info/Embed-Publication-Matplotlib-Latex/
-- 
+
 ### Ridge-line analysis
 - ParselTongue: for information about installation please see https://github.com/kernsuite-debian/parseltongue 
 - AIPS: in case you do not want to use AIPSLite (which comes with ParselTongue) but a local installation. Please see http://www.aips.nrao.edu/index.shtml for installation instructions
