@@ -15,7 +15,7 @@ For the imported modules to be found the repository has to been added to the loc
 - astropy, numpy, scikit-image
 - The script align_imagesEHTim.py requires the eht-imageing module, which can be obtained from https://github.com/achael/eht-imaging.git
 - The script plotSet.py for setting the figure dimensions is taken from https://jwalton.info/Embed-Publication-Matplotlib-Latex/
-- Please save pubstyle.mplstyle in a location in your path or ~/.config/matplotlib/stylelib for some matplotlib settings to produce nice, publicatoin ready plots. This file is loaded in modules/plot_functions.py. Without it the plots might look weird.
+- Please save pubstyle.mplstyle in a location were your system looks for it, e.g. $PATH or better ~/.config/matplotlib/stylelib for some matplotlib settings to produce nice, publicatoin ready plots. This file is loaded in modules/plot_functions.py. Without it the plots might look weird.
 
 ### Ridge-line analysis
 - ParselTongue: for information about installation please see https://github.com/kernsuite-debian/parseltongue 
