@@ -21,7 +21,7 @@ class CleanMap(object):
         self.cmap = None
         self.cmaph = dict()
         self.modFile = None
-        self.modh = dict()
+        self.modh = None
         if ccomp:
             self.comp,self.head,self.cmap = read_fits(self.map)
         else:
@@ -42,6 +42,7 @@ class CleanMap(object):
         self.cmaph['fov']       = self.cmaph['px_inc']*self.cmaph['naxis']*3.6e6
 
     def modelFile(self, modelFile):
+        self.modh = dict()
         with fits.open(modelFile) as f:
             self.modFile = f[1].data
         self.modh['x']          = self.modFile['DELTAX']*3.6e6
@@ -50,13 +51,15 @@ class CleanMap(object):
         self.modh['min']        = self.modFile['MINOR AX']*3.6e6
         self.modh['posa']       = self.modFile['POSANGLE']
 
-    def plotMap(self,sigma=3,fig_size='screen',ra=False,dec=False,saveFile=False,plot_mod=False,plot_cntr=True,plot_color=False,cntr_color=False,model_color=False):
+    def plotMap(self,sigma=3,fig_size='screen',ra=False,dec=False,saveFile=False,plot_mod=False,plot_cntr=True,plot_color=False,cntr_color=False,model_color=False,cntr_lw=False):
 
         if not cntr_color:
             if plot_cntr:
                 cntr_color = 'grey'
             else:
                 cntr_color = 'black'
+        if not cntr_lw:
+            cntr_lw=1
         ####################
         # setting all parameters for plotting a clean image
         #####################
@@ -91,7 +94,7 @@ class CleanMap(object):
         ax.invert_xaxis()
         plotBeam(self.cmaph['beam'][1],self.cmaph['beam'][0],self.cmaph['beam'][2],ra,-dec+0.2,ax)
         if plot_cntr:
-            cntr=ax.contour(xx,yy,self.cmap,linewidths=1,levels=lev,colors=cntr_color,alpha=1)
+            cntr=ax.contour(xx,yy,self.cmap,linewidths=cntr_lw,levels=lev,colors=cntr_color,alpha=1)
         if plot_color:
             extent = np.max(xx),np.min(xx),np.min(yy),np.max(yy)
             im = ax.imshow(self.cmap,cmap=colormap,extent=extent,origin='lower', interpolation='gaussian')
@@ -103,7 +106,8 @@ class CleanMap(object):
         if plot_mod:
             if not model_color:
                 model_color='red'
-            self.modelFile(plot_mod)
+            if not type(self.modh) == dict:
+                self.modelFile(plot_mod)
             Mx = self.modh['x']
             My = self.modh['y']
             Mposa = self.modh['posa']
@@ -122,7 +126,7 @@ class CleanMap(object):
                 min2_x = Mx[j]+np.sin(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
                 min2_y = My[j]-np.cos(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
                 if maj1_y==maj2_y:
-                    ax.plot(maj1_x,maj1_y, color = model_color,marker='+', markersize=5,lw=0.5)
+                    ax.plot(maj1_x,maj1_y, color = model_color,marker='+', markersize=5,lw=1)
                 else:
                     ax.plot([maj1_x,maj2_x],[maj1_y,maj2_y], color = model_color, lw = 1)
                     ax.plot([min1_x,min2_x],[min1_y,min2_y], color = model_color, lw = 1)

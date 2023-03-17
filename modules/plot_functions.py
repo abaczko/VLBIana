@@ -7,6 +7,7 @@ import numpy.ma as ma
 from scipy import stats
 from matplotlib.lines import Line2D
 from matplotlib.pyplot import cm
+import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib as mpl
 import sys
@@ -21,7 +22,7 @@ from VLBIana.modules.jet_calculus import *
 import VLBIana.modules.fit_functions as ff
 from VLBIana.modules.plotSet import *
 ###################################
-plt.style.use('talkstyle')
+#plt.style.use('talkstyle')
 
 default_cmap = 'gist_earth'
 colormap = 'inferno'
