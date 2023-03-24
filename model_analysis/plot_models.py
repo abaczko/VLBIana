@@ -15,14 +15,14 @@ This file can be created using the alignment module.
 from VLBIana.model_analysis.modelComps import *
 
 #Getting lists of the modelfiles and clean files and sorting them after frequency, in this case
-modFs   = glob ('modelfits/*.fits')
-clFs    = glob('cleanfits/*.fits')
+modFs   = glob ('modelfits*.fits')
+clFs    = glob('cleanfits*.fits')
 bands   = ['U','K','Q','W']
 modFs   = [m for f in bands for m in modFs if m.split('/')[-1].split('_')[1].find(f)!=-1]
 clFs    = [m for f in bands for m in clFs if m.split('/')[-1].split('_')[1].find(f)!=-1]
 
 # Loading everything and creating the modelclass. Please provide a redshift, if not, no Brightness Temperature will be calculated.
-mods = modelComp(modFs,cleanFiles=clFs,shift='masked_shifts_gmva.txt',z=0.005)
+mods = modelComp(modFs,cleanFiles=clFs,shift='shifts.txt',z=0.005)
 
 # This is an example on how to change the ids once you got an idea on which one is which. 
 # The change_id function takes a list of the old id names and the new id names and changes these in the class itself.
