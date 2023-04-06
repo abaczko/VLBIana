@@ -10,7 +10,6 @@ from glob import glob
 import sys,os
 from itertools import cycle,chain,compress
 from VLBIana.modules.jet_calculus import *
-#import VCAT.modules.fit_functions as ff
 from VLBIana.modules.plot_functions import *
 import VLBIana.modules.fit_functions as ff
 import ehtim as eh

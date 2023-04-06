@@ -15,14 +15,14 @@ This file can be created using the alignment module.
 from VLBIana.model_analysis.modelComps import *
 
 #Getting lists of the modelfiles and clean files and sorting them after frequency, in this case
-modFs   = glob ('modelfits*.fits')
-clFs    = glob('cleanfits*.fits')
+modFs   = glob ('modelfits/*.fits')
+clFs    = glob('cleanfits/*.fits')
 bands   = ['U','K','Q','W']
 modFs   = [m for f in bands for m in modFs if m.split('/')[-1].split('_')[1].find(f)!=-1]
 clFs    = [m for f in bands for m in clFs if m.split('/')[-1].split('_')[1].find(f)!=-1]
 
 # Loading everything and creating the modelclass. Please provide a redshift, if not, no Brightness Temperature will be calculated.
-mods = modelComp(modFs,cleanFiles=clFs,shift='shifts.txt',z=0.005)
+mods = modelComp(modFs,cleanFiles=clFs,shift='masked_shifts_gmva.txt',z=0.005)
 
 # This is an example on how to change the ids once you got an idea on which one is which. 
 # The change_id function takes a list of the old id names and the new id names and changes these in the class itself.
@@ -42,18 +42,9 @@ old_ids.extend([str(a)+'_'+str(b) for a,b in zip(mods.model[keys[3]]['data']['ep
 mods.change_id(old_ids,changemod)
 
 # To make a plot for components comps=['A13','A15','B2','B3','A14'] and connecting them with a line with X=FREQ and Y=FLUX
-mods.plot_comp_xy(comps=['A13','A15','B2','B3','A14'],line=True,out=True)
+mods.plot_comp_xy(comps=['A13','A15','B2','B3','A14'],line=True)
 
-# Fit the component continuum spectrum
-mods.fit_comp_spectrum()
 # To overplot the models onto the clean maps giving the dimensions of the image.
 mods.overplot_model(ra=10,dec=7)
-# You can also give an array for RA and DEC (only one value per fits. 
-mods.overplot_model(ra=[5,4,3,2,1.5],dec=[3,2.5,1.8,1.3,0.8],shifted=True,plot_cmp_arrow=True)
-
-#Evolution plot. Plots all maps below each other
-mods.plot_evolution_map(ra=2,dec=[3.0,2.5,1.8,1.3,0.8],shifted=True,plot_cmp_arrow=True,plot_label=True)
-
-
 # To write out a Tex-table for for all component values.
 mods.write_tex_table()
