@@ -14,17 +14,17 @@ def readShift(shiftFile):
 class RidgeLine(object):
     def __init__(self,ridgeFile,logFile,mapFile,shift=None,incl=90):
         self.ridgeline= ridgeFile
-        self.log            = logFile
-        self.map            = mapFile
-        self.cmap           = None
+        self.log        = logFile
+        self.map        = mapFile
+        self.cmap       = None
         self.peak_err   = []
         self.pos_err    = []
         self.fwhm_err   = []
         self.log_isl    = []
-        self.RL             = None
-        self.RLbinned = None
+        self.RL         = None
+        self.RLbinned   = None
         self.shift      = shift
-        self.i              = incl*np.pi/180
+        self.i          = incl*np.pi/180
 
         print('Applying an inclination of the jets of i={} rad'.format(self.i))
 
@@ -38,8 +38,8 @@ class RidgeLine(object):
         To get the errors on fit parameters from SLFIT
         '''
         logFile = Table.read(self.log,format='ascii')
-        self.peak_err = logFile['peak_err']
-        self.fwhm_err = logFile['fwhm_err']
+        self.peak_err   = logFile['peak_err']
+        self.fwhm_err   = logFile['fwhm_err']
         self.pos_err    = logFile['pos_err']
         self.log_isl    = logFile['isl']
         return self.peak_err,self.fwhm_err,self.pos_err#,self.log_isl
@@ -53,7 +53,7 @@ class RidgeLine(object):
         Read the ridgeline files and return a table with all values
         give theta in rad
         '''
-        logFile     = self.readLog()
+        logFile = self.readLog()
         self.RL = Table.read(self.ridgeline,format='ascii',data_start=1,names=['isl','m','n','Xpos','Ypos','Dist','Peak','FWHM'])
         self.readMap()
         # convert properties to the required units and derive uncertainties
@@ -65,45 +65,48 @@ class RidgeLine(object):
         self.RL['Peak'] *= 1e3
         self.RL['Xpos'] *= 1e3
         self.RL['Ypos'] *= 1e3
-        self.RL['Freq'] = [self.cmap['freq']]*len(self.RL['Xpos'])
-        self.RL['YposErr']      = self.pos_err
-        self.RL['FitErr']           = self.fwhm_err
-        self.RL['PeakFitErr']   = self.peak_err
+        self.RL['Freq']     = [self.cmap['freq']]*len(self.RL['Xpos'])
+        self.RL['YposErr']  = self.pos_err
+        self.RL['FitErr']   = self.fwhm_err
+        self.RL['PeakFitErr'] = self.peak_err
         if widthErr:
             sys.stdout.write('Use stddev calculated from changing the rotation angle.\n')
             self.RL['FWHMErr']  = self.ReadErrors(widthErr)['RL_stddev']
         else:
             self.RL['FWHMErr'] = self.RL['FitErr']
         # removing some values
-        mask        = np.logical_and.reduce((self.RL['Peak']> 5*self.cmap['noise'],self.RL['FWHM']>self.cmap['beam'][0],self.RL['FWHM']>self.RL['FWHMErr']))
-        nn1 = len(self.RL['Xpos'])
+        self.RL['Dist'] = np.sign(self.RL['Xpos'])*np.sqrt(self.RL['Xpos']**2+self.RL['Ypos']**2)/np.sin(self.i)
+        self.RL['DistErr'] = np.abs(self.RL['Ypos']/np.sqrt(self.RL['Xpos']**2+self.RL['Ypos']**2)*self.RL['YposErr'])
+
+        mask = np.logical_and.reduce((self.RL['Peak']> 5*self.cmap['noise'],self.RL['FWHM']>self.cmap['beam'][0],self.RL['FWHM']>self.RL['FWHMErr']))
+        nn1     = len(self.RL['Xpos'])
         self.RL = self.RL[mask]
-        nn2 = len(self.RL['Xpos'])
+        nn2     = len(self.RL['Xpos'])
 
         if nn1 != nn2:
             print('WARNING: '+str(nn1-nn2)+' Entries have been deleted (either flux is below 3*noise or fwhm>beam')
         # continue filling the table
-        self.RL['Dist']             = np.sign(self.RL['Xpos'])*np.sqrt(self.RL['Xpos']**2+self.RL['Ypos']**2)/np.sin(self.i)
-        self.RL['DistErr']      = np.abs(self.RL['Ypos']/np.sqrt(self.RL['Xpos']**2+self.RL['Ypos']**2)*self.RL['YposErr'])
-        self.RL['FWHMDeconvolved']      = np.sqrt(self.RL['FWHM']**2-self.cmap['beam'][0]**2)
+#        self.RL['Dist'] = np.sign(self.RL['Xpos'])*np.sqrt(self.RL['Xpos']**2+self.RL['Ypos']**2)/np.sin(self.i)
+#        self.RL['DistErr'] = np.abs(self.RL['Ypos']/np.sqrt(self.RL['Xpos']**2+self.RL['Ypos']**2)*self.RL['YposErr'])
+        self.RL['FWHMDeconvolved'] = np.sqrt(self.RL['FWHM']**2-self.cmap['beam'][0]**2)
         if add_image_err:
-            self.RL['FWHMDeconvolvedErr']   = ((self.RL['FWHM']/self.RL['FWHMDeconvolved'])*self.RL['FWHMErr'])+self.cmap['beam'][0]/add_image_err
+            self.RL['FWHMDeconvolvedErr'] = ((self.RL['FWHM']/self.RL['FWHMDeconvolved'])*self.RL['FWHMErr'])+self.cmap['beam'][0]/add_image_err
         else:
-            self.RL['FWHMDeconvolvedErr']   = ((self.RL['FWHM']/self.RL['FWHMDeconvolved'])*self.RL['FWHMErr'])
+            self.RL['FWHMDeconvolvedErr'] = ((self.RL['FWHM']/self.RL['FWHMDeconvolved'])*self.RL['FWHMErr'])
 
-        self.RL['RA']           = self.RL['Xpos']*np.cos(theta)-self.RL['Ypos']*np.sin(theta)
+        self.RL['RA']       = self.RL['Xpos']*np.cos(theta)-self.RL['Ypos']*np.sin(theta)
         self.RL['Dec']      = self.RL['Ypos']*np.cos(theta)+self.RL['Xpos']*np.sin(theta)
 
         self.RL['RAErr']    = np.abs(self.RL['YposErr']*np.sin(theta))
         self.RL['DecErr']   = np.abs(self.RL['YposErr']*np.cos(theta))
         if self.shift is not None:
             print('shifting data\n')
-            self.RL['RAshift']  = self.RL['RA']+self.shift[0]
-            self.RL['Decshift'] = self.RL['Dec']-self.shift[1]
-            self.RL['RAshiftErr'] = self.RL['RAErr']
-            self.RL['DecshiftErr'] = self.RL['DecErr']
-            self.RL['Distshift']= np.sign(self.RL['RAshift'])*np.sqrt(self.RL['RAshift']**2+self.RL['Decshift']**2)
-            self.RL['DistshiftErr']= self.RL['DistErr']
+            self.RL['RAshift']      = self.RL['RA']+self.shift[0]
+            self.RL['Decshift']     = self.RL['Dec']+self.shift[1]
+            self.RL['RAshiftErr']   = self.RL['RAErr']
+            self.RL['DecshiftErr']  = self.RL['DecErr']
+            self.RL['Distshift']    = np.sign(self.RL['RAshift'])*np.sqrt(self.RL['RAshift']**2+self.RL['Decshift']**2)
+            self.RL['DistshiftErr'] = self.RL['DistErr']
         return self.RL
 
     def binRidgeLine(self,rlbin=1/4.):

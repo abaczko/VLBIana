@@ -71,7 +71,7 @@ def set_scaled_size():
 
     return
 
-def set_corrected_size(fig, size, dpi=300, eps=1e-2, give_up=2, min_size_px=10):
+def set_corrected_size(fig, size, dpi=100, eps=1e-2, give_up=2, min_size_px=10):
     target_width, target_height = size
     set_width, set_height = target_width, target_height # reasonable starting point
     deltas = [] # how far we have

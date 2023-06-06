@@ -38,8 +38,8 @@ class CleanMap(object):
         self.cmaph['naxis'] = self.head['NAXIS1']
         self.cmaph['beam']  = [self.head['BMAJ']*3.6e6,self.head['BMIN']*3.6e6,self.head['BPA']]
         self.cmaph['freq']  = np.around(self.head['crval3']*1e-9,1)
-        self.cmaph['ppb']       = [PXPERBEAM(self.cmaph['beam'][0]*np.pi/180,self.cmaph['beam'][1]*np.pi/180,self.cmaph['px_inc']*3.6e6*np.pi/180)]
-        self.cmaph['fov']       = self.cmaph['px_inc']*self.cmaph['naxis']*3.6e6
+        self.cmaph['ppb']   = [PXPERBEAM(self.cmaph['beam'][0]*np.pi/180,self.cmaph['beam'][1]*np.pi/180,self.cmaph['px_inc']*3.6e6*np.pi/180)]
+        self.cmaph['fov']   = self.cmaph['px_inc']*self.cmaph['naxis']*3.6e6
 
     def modelFile(self, modelFile):
         self.modh = dict()
@@ -139,8 +139,10 @@ class CleanMap(object):
 
         if saveFile:
             figsize=set_size(fig_size)
+            print(figsize)
             set_corrected_size(f,figsize)
             plt.savefig(saveFile,bbox_inches='tight')
+            sys.stdout.write('Plot file {} saved.±n'.format(saveFile))
         else:
             plt.show()
         plt.clf()

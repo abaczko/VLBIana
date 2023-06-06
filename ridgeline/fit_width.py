@@ -12,7 +12,7 @@ from VLBIana.modules.plot_functions import *
 
 plt.ioff()
 
-def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='Powerlaw',asize=5,plot_hist=False,write_fit_info=False,plot_res=True,plot_ang=True,plot_flux=False,fig_size='aanda*',add_rl=False,fig_extension='pdf',incl=90,binRidgeLine=False,fit_both_jets_together=False,errorFile=False,write_tex=False,zcut=False):
+def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='Powerlaw',asize=5,plot_hist=False,write_fit_info=False,plot_res=True,plot_ang=True,plot_flux=False,fig_size='aanda*',add_rl=False,fig_extension='pdf',incl=90,binRidgeLine=False,fit_both_jets_together=False,errorFile=False,write_tex=False,zcut=False,add_points=False):
     ''' To fit the width of a jet
     '''
     if type(ridgeLine)==str:
@@ -147,20 +147,33 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
     ymax = max([max(f) for f in Y])*3
     xmin    = min (np.abs(np.concatenate(X)))
     xmax = max (np.abs(np.concatenate(X)))*1.1
+    if add_points:
+        if type(add_points)==dict:
+            add_points = [add_points]
+        for addP in add_points:
+            if type(addP['dist'])==list:
+                addMin = min(np.abs(addP['dist']))
+            else:
+                addMin = addP['dist']
+            if addMin<xmin:
+                xmin= addMin
+
+    xmin = Rs2mas(100)
+
     xr=np.arange(xmin,xmax,0.01)
     yrmin = -1
     yrmax = 1
-
-    f,ax=plt.subplots(nsub,2,sharex='col',sharey='row',gridspec_kw={'hspace': 0, 'wspace': 0})
     figsize=(set_size(fig_size,subplots=(nsub,2)))
-    axesWidthPlot(ax[0,0],secxax=r'Distance from the core [$R_\mathrm{S}$]')
-    axesWidthPlot(ax[0,1],secxax=r'Distance from the core [$R_\mathrm{S}$]',secyax=r'De-convolved jet width \small{[$R_\mathrm{S}$]}',ylabel=False)
+    f,ax=plt.subplots(nsub,2,sharex='col',sharey='row',gridspec_kw={'hspace': 0, 'wspace': 0},figsize=figsize)
+    axesWidthPlot(ax[0,0],secxax=r'Distance from core [$R_\mathrm{S}$]')
+    axesWidthPlot(ax[0,1],secxax=r'Distance from core [$R_\mathrm{S}$]',secyax=r'De-convolved width \small{[$R_\mathrm{S}$]}',ylabel=False)
     for axs in ax.flatten():
         axs.set_xscale('log')
         axs.set_yscale('log')
 
     if plot_flux:
         axesWidthPlot(ax[nf,0],ylabel=r'Peak Flux density \small{$\left[\mathrm{\frac{mJy}{beam}}\right]$}')
+        axesWidthPlot(ax[nf,1],xlabel=r'Distance from the core [mas]')
 
     if plot_ang:
         axesWidthPlot(ax[na,0],ylabel=r'$\phi_\mathrm{app}$ [deg]',yscale='linear')
@@ -185,6 +198,9 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
 
     i=0
 #ax0
+    if add_points:
+        sys.stdout.write('plotting additional points on top')
+
     for rl,m in zip(ridgeLine,markers):
         print (rl)
         print(markers)
@@ -209,7 +225,6 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
             ax[na,0].errorbar(DistJ[i],angJ,yerr=angEJ,fmt=m,ms=0,linewidth=0,elinewidth=0.4,errorevery=1,alpha=0.3)
             ax[na,1].errorbar(DistCJ[i],angCJ,yerr=angECJ,fmt=m,ms=0,linewidth=0,elinewidth=0.4,errorevery=1,alpha=0.3)
 
-
         if plot_res:
             if fit == 'Powerlaw':
                 yymJ=ff.powerlaw(betaJ,DistJ[i])
@@ -231,7 +246,44 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
             ax[nr,1].scatter(DistCJ[i],resCJ,s=4,marker=m)
             ax[nr,1].plot(xr,np.linspace(0,0,len(xr)),'k:',lw=1)
             ax[nr,0].plot(xr,np.linspace(0,0,len(xr)),'k:',lw=1)
+
         i+=1
+
+    if add_points:
+        addmarker=['*','2','d']
+        addcolor = ['red','magenta','orange']
+        for i,addP in enumerate(add_points):
+            if addP['jet']=='Jet':
+                axis=0
+            elif addP['jet']=='CJet':
+                axis=1
+            elif addP['jet']=='ALL':
+                axis='ALL'
+            else:
+                axis='BOTH'
+
+            if axis=='BOTH':
+                ax[0,0].scatter(addP['dist'],addP['fwhm'],marker=addmarker[i],color=addcolor[i],label='{}'.format(addP['label']))
+                ax[0,1].scatter(addP['dist'],addP['fwhm'],marker=addmarker[i],color=addcolor[i])
+            elif axis=='ALL':
+                add_DistJ = np.array(addP['dist'])[np.sign(addP['dist'])==1]
+                add_DistCJ = np.abs(np.array(addP['dist'])[np.sign(addP['dist'])==-1])
+                add_fwhmJ = np.array(addP['fwhm'])[np.sign(addP['dist'])==1]
+                add_fwhmCJ = np.array(addP['fwhm'])[np.sign(addP['dist'])==-1]
+                ax[0,0].scatter(add_DistJ,add_fwhmJ,marker=addmarker[i],s=100,c=addcolor[i],label='{}'.format(addP['label']))
+                ax[0,1].scatter(add_DistCJ,add_fwhmCJ,marker=addmarker[i],s=100,c=addcolor[i])
+            else:
+                ax[0,axis].scatter(addP['dist'],addP['fwhm'],marker=addmarker[i],color=addcolor[i])
+            if plot_ang:
+                if 'ang' in addP.keys():
+                    ax[na,axis].scatter(addP['dist'],addP['ang'],marker=addmarker[i],color=addcolor[i])
+            if plot_flux:
+                if 'flux' in addP.keys():
+                    if axis=='BOTH':
+                        ax[0,0].scatter(addP['dist'],addP['flux'],marker=addmarker[i],color=addcolor[i])
+                        ax[0,1].scatter(addP['dist'],addP['flux'],marker=addmarker[i],color=addcolor[i])
+                    else:
+                        ax[0,axis].scatter(addP['dist'],addP['flux'],marker=addmarker[i],color=addcolor[i])
 
     if plot_hist:
         reswJ= ff.resid(np.concatenate(fwhmJ),ff.broken_powerlaw(betaJ,np.concatenate(DistJ)),np.concatenate(fwhmEJ))
@@ -273,9 +325,7 @@ def rl_fit(mapFile,ridgeLine,saveFile,label,theta,logFile,shiftFile=False,fit='P
         aa.label_outer()
 
     set_corrected_size(f,figsize)
-#   saveFile+='width+flux_fit'
     saveFile = saveFile+'.'+fig_extension
-    #plt.tight_layout()
     plt.savefig(saveFile,bbox_inches='tight',transparent=True)
     plt.close()
     sys.stdout.write('Saved plot to file: {}\n'.format(saveFile))
