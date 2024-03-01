@@ -16,7 +16,11 @@ import ehtim as eh
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+from matplotlib.path import Path
+from matplotlib.patches import PathPatch
+
 plt.ion()
+plt.style.use('pubstyle')
 
 def trim_axs(axs, N):
   """little helper to massage the axs list to have correct length..."""
@@ -194,6 +198,7 @@ class modelComp(object):
                 self.cchead[key]['shiftDEC']=shift['DEC']
 
     def update_ids(self):
+        ### This does not work if there is a mix of original numbering and changed numbers, giving a mixture of numered strings '1','2' etc and strings starting with a letter 'A1','B4' etc.
         sys.stdout.write('Updatend component id list.\n')
         self.ids = []
         [self.ids.extend(self.model[key]['data']['id']) for key in self.keys]
@@ -246,6 +251,7 @@ class modelComp(object):
             if self.shift:
                 self.model_sorted_shifted[ID]['date']= date
         self.update_cm()
+
 
     def change_id(self,old_ids,new_ids):
         '''
@@ -334,6 +340,7 @@ class modelComp(object):
         for i,comp in enumerate(model_sorted):
             color = ccolors[self.ids==comp][0]
             symbol = self.symbols[i]
+            model_sorted[comp].sort(xax)
             xx = model_sorted[comp][xax]
             yy = model_sorted[comp][yax]
             if line:
@@ -408,7 +415,9 @@ class modelComp(object):
               plt.show()
             plt.cla()
 
-    def plot_evolution_map(self,sigma=3,fig_size='screen',ra=False,dec=False,saveFile=False,plot_color=False,cntr_color=False,cntr_lw=False,ccolor=False,out=True,plot_id=True,plot_below=False,shifted=False,plot_cmp_arrow=False,plot_label=True,plot_ontop=False,plot_cmp_name=False,epochs=False,plot_cmp_lines=False,plot_comps=True,plot_title=False):
+    def plot_evolution_map(self,sigma=3,fig_size='screen',ra=False,dec=False,saveFile=False,plot_color=False,cntr_color=False,cntr_lw=False,ccolor=False,out=True,plot_id=False,plot_below=False,shifted=False,plot_cmp_arrow=False,plot_label=True,plot_ontop=False,plot_cmp_name=False,epochs=False,plot_cmp_lines=False,plot_comps=False,plot_title=False,exclude_model=False,cmp_name_color=None,nx=1):
+        """ Plot evolution of VLBI maps
+        """
         sys.stdout.write('Plot modelcomponents over clean maps\n')
         if epochs:
             ids         = []
@@ -422,7 +431,7 @@ class modelComp(object):
             ids = self.ids
             id_colors = self.id_colors
         nn = len(epochs)
-        nx = 1
+        nx = nx
         ny = int(np.ceil(nn/nx))
 
         if not cntr_color:
@@ -449,17 +458,15 @@ class modelComp(object):
         shifty = [0]
         nk = len(epochs)
         for kk,keys in enumerate(epochs):
-            if kk==1:
-                shifty.append(shifty[kk-1]-dec[kk-1])
-            if kk>1:
-                shifty.append(shifty[kk-1]-2*dec[kk-1])
+            if kk>0:
+                shifty.append(shifty[kk-1]-dec[kk-1]*1.2)
+           # if kk>1:
+            #    shifty.append(shifty[kk-1]-2*dec[kk-1])
 
-        print(dec)
-        print(shifty)
         if plot_ontop:
             Ddec = [-dec[0],dec[0]]
         else:
-            Ddec= [shifty[-1]-dec[-1]*4,dec[0]+dec[0]*0.2]
+            Ddec= [shifty[-1]-dec[-1]*2,dec[0]]
             #Ddec = [-np.sum(dec),dec[0]]
         if plot_color:
             plt.style.use('dark_background')
@@ -469,8 +476,8 @@ class modelComp(object):
         else:
             ysize = np.sum(dec)*xsize/ra
         fig,ax = plt.subplots(1,1,figsize=(xsize,ysize), constrained_layout=True)
-        ax.set_ylabel('Frequency [GHz]',fontsize=12)
-        ax.set_xlabel('RA [mas]',fontsize=12)
+        ax.set_ylabel('Frequency [GHz]')#,fontsize=12)
+        ax.set_xlabel('RA [mas]')#,fontsize=12)
 
         lines   = []
         labels  = []
@@ -481,9 +488,12 @@ class modelComp(object):
         ax.minorticks_on()
         ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         if plot_title:
-            ax.set_title(plot_title,size=12)
+            #ax.set_title(plot_title,size=12)
+            bbox_props= dict(boxstyle='round',alpha=0.2)
+            ax.annotate(plot_title, xy=(0.6,0.95),xycoords='axes fraction',fontsize=16,bbox=bbox_props,zorder=20)
+
         else:
-            ax.set_title('{} - {}'.format(self.model[epochs[0]]['source'],self.model[epochs[0]]['date_obs']),size=12)
+            ax.set_title('{} - {}'.format(self.model[epochs[0]]['source'],self.model[epochs[0]]['date_obs']),size=10)
 
         ax.invert_xaxis()
 
@@ -522,11 +532,17 @@ class modelComp(object):
                 lev.append(level0*2**i)
             xx  = np.linspace(-clean['naxis']*0.5*scale,(clean['naxis']*0.5-1)*scale,clean['naxis'])
             yy  = np.linspace(clean['naxis']*0.5*scale,-(clean['naxis']*0.5-1)*scale,clean['naxis'])
-            ymask = np.logical_and(-dec[kk]<=yy,yy<=dec[kk])
+            if plot_color:
+                ymask = np.logical_and(-dec[kk]<=yy,yy<=dec[kk])
+            else:
+                if kk==0:
+                    ymask = np.logical_and(-dec[kk]<=yy,yy<=dec[kk])
+                else:
+                    ymask = np.logical_and(-dec[kk]*1.5<=yy,yy<=dec[kk]*1.5)
             YY = yy[ymask]
             yy=YY
-            shifty
             ccmap=ccmap[ymask,:]
+
 
             vmax=ma.amax(ccmap)
             norm = mpl.colors.SymLogNorm(linthresh=level0,linscale=0.05,vmin=level0,vmax=vmax,base=np.e)
@@ -534,17 +550,21 @@ class modelComp(object):
             ##################
             # Plotting
             ###################
-            plotBeam(clean['beam'][0],clean['beam'][1],clean['beam'][2],ra,sdec-dec[kk],ax)
+            plotBeam(clean['beam'][0],clean['beam'][1],clean['beam'][2],ra,sdec-dec[kk]*0.4,ax)
 
             if plot_ontop:
                 colorsc =['red','blue','green','black']
                 cntr_color = colorsc[kk]
                 extent = np.max(xx),np.min(xx),np.min(yy),np.max(yy)
             else:
-                if(kk==0):
-                    extent = max(xx),min(xx),min(yy)+shifty[kk],max(yy)+shifty[kk]
+                if plot_color:
+                    if(kk==0):
+                        extent = max(xx),min(xx),min(yy)+shifty[kk],max(yy)+shifty[kk]
+                    else:
+                        extent = max(xx),min(xx),2*min(yy)+shifty[kk],shifty[kk]
                 else:
-                    extent = max(xx),min(xx),2*min(yy)+shifty[kk],shifty[kk]
+                    extent = max(xx),min(xx),min(yy)+shifty[kk],max(yy)+shifty[kk]
+
 
             cntr = ax.contour(ccmap,linewidths=cntr_lw,levels=lev,colors=cntr_color,alpha=1,extent=extent)
             if plot_color:
@@ -552,39 +572,63 @@ class modelComp(object):
                 im.set_norm(norm)
 
             if plot_comps:
-                Mx  = model['DELTAX']
-                My  = model['DELTAY']
-                Mposa   = model['POSANGLE']
-                Mmaj    = model['MAJOR AX']
-                Mmin    = model['MINOR AX']
-                for j,MMx in enumerate(Mx):
-                    epid=model['id'][j]
-                    ccolor = ccolors[ids==epid][0]
-                    e_comp = Ellipse([Mx[j],My[j]],Mmaj[j],Mmin[j],-Mposa[j]+90, color=ccolor, zorder=2, fill=False,lw=0.5)
-                    ax.add_artist(e_comp)
-                    maj1_x = Mx[j]-np.sin(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
-                    maj1_y = My[j]+np.cos(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
-                    maj2_x = Mx[j]+np.sin(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
-                    maj2_y = My[j]-np.cos(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
-    
-                    min1_x = Mx[j]-np.sin(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
-                    min1_y = My[j]+np.cos(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
-                    min2_x = Mx[j]+np.sin(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
-                    min2_y = My[j]-np.cos(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
-                    if plot_cmp_lines==key:
-                        xmin.append(min1_x.copy())
-                        xmax.append(min2_x.copy())
-                    if maj1_y==maj2_y:
-                        ax.plot(maj1_x,maj1_y, color = ccolor,marker='+', markersize=8,lw=0.8,label=model['id'][j])
-                    elif Mmaj[j] < clean['beam'][0]/10.:
-                        ax.plot((maj1_x+maj2_x)/2.,(maj1_y+maj2_y)/2., color = ccolor,marker='+', markersize=10,lw=1,label=model['id'][j])
-                    else:
-                        ax.plot([maj1_x,maj2_x],[maj1_y,maj2_y], color = ccolor, lw = 0.8,label=model['id'][j])
-                        ax.plot([min1_x,min2_x],[min1_y,min2_y], color = ccolor, lw = 0.8)
-                    if plot_cmp_arrow:
-                        ax.annotate('{}'.format(model['id'][j]),xy=(Mx[j],My[j]), xycoords='data', xytext=(-5, 10), textcoords='offset points',arrowprops=dict(arrowstyle="->", connectionstyle="arc3",relpos=(0.7,0.5),shrinkA=2,shrinkB=0.1), color=ccolor,fontsize=2)
-                    elif plot_cmp_name:
-                        ax.annotate('{}'.format(model['id'][j]),xy=(Mx[j],My[j]), xycoords='data', xytext=(-5, 10), textcoords='offset points',color=ccolor,fontsize=7)
+                if key==exclude_model:
+                    sys.stdout.write('will not plot model for map {}'.format(key))
+                else:
+                    model.sort('id')
+                    Mx  = model['DELTAX']
+                    My  = model['DELTAY']
+                    Mposa   = model['POSANGLE']
+                    Mmaj    = model['MAJOR AX']
+                    Mmin    = model['MINOR AX']
+                    for j,MMx in enumerate(Mx):
+                        epid=model['id'][j]
+                        ccolor = ccolors[ids==epid][0]
+                        e_comp = Ellipse([Mx[j],My[j]],Mmaj[j],Mmin[j],-Mposa[j]+90, color=ccolor, zorder=2, fill=False,lw=0.5)
+                        ax.add_artist(e_comp)
+                        maj1_x = Mx[j]-np.sin(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
+                        maj1_y = My[j]+np.cos(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
+                        maj2_x = Mx[j]+np.sin(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
+                        maj2_y = My[j]-np.cos(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
+
+                        min1_x = Mx[j]-np.sin(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
+                        min1_y = My[j]+np.cos(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
+                        min2_x = Mx[j]+np.sin(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
+                        min2_y = My[j]-np.cos(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
+                        if plot_cmp_lines==key:
+                            xmin.append(min1_x.copy())
+                            xmax.append(min2_x.copy())
+                        if maj1_y==maj2_y:
+                            ax.plot(maj1_x,maj1_y, color = ccolor,marker='+', markersize=8,lw=1,label=model['id'][j])
+                        elif Mmaj[j] < clean['beam'][0]/10.:
+                            ax.plot((maj1_x+maj2_x)/2.,(maj1_y+maj2_y)/2., color = ccolor,marker='+', markersize=10,lw=1,label=model['id'][j])
+                        else:
+                            ax.plot([maj1_x,maj2_x],[maj1_y,maj2_y], color = ccolor, lw = 0.8,label=model['id'][j])
+                            ax.plot([min1_x,min2_x],[min1_y,min2_y], color = ccolor, lw = 0.8)
+                        if plot_cmp_arrow:
+                            if cmp_name_color:
+                                cmp_color = cmp_name_color
+                            else:
+                                cmp_color = ccolor
+
+                            if j % 2 ==0:
+                                yy=25
+                            else:
+                                yy=40
+                            bbox_props= dict(boxstyle='round',fc='w')
+                            ax.annotate('{}'.format(model['id'][j]),xy=(Mx[j],My[j]), xycoords='data', xytext=(-5, yy), textcoords='offset points',arrowprops=dict(arrowstyle="->", connectionstyle="arc3",relpos=(0.7,0.5),shrinkA=2,shrinkB=0.1), color=cmp_color,fontsize=9,bbox=bbox_props,zorder=20)
+                        elif plot_cmp_name:
+                            if cmp_name_color:
+                                cmp_color = cmp_name_color
+                            else:
+                                cmp_color = ccolor
+                            if j % 2 ==0:
+                                yy=15
+                            else:
+                                yy=30
+                            bbox_props= dict(boxstyle='round',alpha=0.2)
+                            ax.annotate('{}'.format(model['id'][j]),xy=(Mx[j],My[j]), xycoords='data', xytext=(-5, yy), textcoords='offset points',color=cmp_color,fontsize=7,bbox=bbox_props,zorder=20)
+
 
 
 # The following lines sort the labels and handles alphabetically 
@@ -602,7 +646,7 @@ class modelComp(object):
                 for j,(x1,x2) in enumerate(zip(xmin,xmax)):
                     epid=model['id'][j]
                     ccolor = ccolors[ids==epid][0]
-                    ax.axvline(x = (x1+x2)/2., color = ccolor,lw=0.5,ls='--')
+                    ax.axvline(x = (x1+x2)/2., color = ccolor,lw=0.8,ls='--',alpha=0.5)
 
         if plot_label:
             by_label = dict(zip(labels, lines))
@@ -610,19 +654,24 @@ class modelComp(object):
             sorted_by_label = {key: by_label[key] for key in keys_list}
             pos = ax.get_position()
             ax.set_position([pos.x0, pos.y0, pos.width, pos.height * 0.85])
-            fig.legend(sorted_by_label.values(), sorted_by_label.keys(),loc='upper right', bbox_to_anchor=(1.0,0.98),ncol=1,prop = { "size": 8})
+            fig.legend(sorted_by_label.values(), sorted_by_label.keys(),loc='upper right', bbox_to_anchor=(1.15,0.88),ncol=1,prop = { "size": 9})
 # sorting done, legend plottet
         tlabel = ['{}'.format(self.model[key]['freq']) for key in epochs]
-        plt.yticks(shifty,tlabel,fontsize=10)
+        plt.yticks(shifty,tlabel,fontsize=9)
         plt.xticks(fontsize=10)
         plt.tight_layout()#pad=0.2,w_pad=0.2,h_pad=0.2)
         fig.subplots_adjust(right=0.95, top=0.98)
 
         if out:
+            fig_size='aanda'
+            figsize=set_size(fig_size)
+            #set_corrected_size(fig,figsize)
             if type(out)==bool:
                 outf = modelh['source']+'_map+model_evolution.pdf'
+            elif type(out)==str:
+                outf = out
             if shifted:
-                outf = modelh['source']+'_map+model_evolution_shifted.pdf'
+                outf = ''.join(outf.split('.')[:-1])+'_shifted.pdf'
             fig.savefig(outf,bbox_inches='tight')
             sys.stdout.write('Plot has been written to {}\n'.format(outf))
         else:
@@ -632,14 +681,18 @@ class modelComp(object):
 
 
 
-    def overplot_model(self,sigma=3,fig_size='screen',ra=False,dec=False,saveFile=False,plot_color=False,cntr_color=False,cntr_lw=False,ccolor=False,out=True,plot_id=True,shifted=False,plot_cmp_arrow=False,plot_label=True):
+    def overplot_model(self,sigma=3,fig_size='screen',ra=False,dec=False,saveFile=False,plot_model=True,plot_color=False,cntr_color=False,cntr_lw=False,ccolor=False,out=True,plot_id=True,shifted=False,plot_cmp_arrow=False,plot_label=True):
+        """I changed alot here to try to plot all maps with the same colorbar. However, that does not look nice for the data I tested. I have to continue work on this.
+        """
         sys.stdout.write('Plot modelcomponents over clean maps\n')
 #        if plot_all:
         nn = len(self.model)
         if nn>6:
             nx = 4
+        elif nn==6:
+            nx = 3
         else:
-            nx = 2
+            nx = 1
         ny = int(np.ceil(nn/nx))
 
         if not cntr_color:
@@ -659,26 +712,38 @@ class modelComp(object):
         RA = ra
         DEC = dec
         if type(dec)==list:
-            if len(dec)>2:
+            if len(dec)>2 or np.logical_and(len(dec)==2, len(self.keys)==2):
                 if len(dec) > len(self.keys):
                     sys.stdout.write('please give only 1 parameter for each fits-image ra and dec\n')
                     return
                 load_gs = True
                 gs_heights= dec
-            elif len(dec)==2:
+            elif len(dec)==2 and len(self.keys)==1:
                 Dra  = ra
                 Ddec = dec
         else:
             Dra = [-ra,ra]
             Ddec= [-dec,dec]
 
-        xsize =6
+        xsize = 6
+        ysize = 3
         xxs = xsize*nx
-        yys=np.mean(dec)*xxs/np.mean(ra)
-        yys*=ny
+        yys = np.mean(dec)*xxs/np.mean(ra)
+        yys = ysize*ny
 
-        fig,axs = plt.subplots(ny,nx, figsize=(xxs,yys))
-        axs   = trim_axs(axs,len(self.model))
+        fig,ax = plt.subplots(ny,nx, figsize=(xxs,yys))
+        ax   = trim_axs(ax,len(self.model))
+        #fig = plt.figure(constrained_layout = True)
+        #gs = fig.add_gridspec(ny,nx, hspace=0, wspace=0)
+        #ax = gs.subplots(sharex = 'col')
+
+        vmin = ma.amin([self.cchead[key]['noise'] for key in self.keys])*1e3
+        vmax = ma.amax([self.ccmap[key] for key in self.keys])*1e3
+        level00=vmin*min(sigma)
+        #lev = []
+        #for i in range(0,10):
+        #    lev.append(level0*2**i)
+        #norm = mpl.colors.SymLogNorm(linthresh=level0,linscale=0.5,vmin=level0,vmax=0.5*vmax,base=10)
 
 
         lines   = []
@@ -687,7 +752,7 @@ class modelComp(object):
         ####################
         # setting all parameters for plotting a clean image
         #####################
-        for ax,key in zip(axs,self.keys):
+        for aa,key in zip(ax.flat,self.keys):
             modelh= self.model[key]
             clean = self.cchead[key]
             if shifted:
@@ -698,6 +763,23 @@ class modelComp(object):
                 ccmap = self.ccmap_shifted[key]
             else:
                 ccmap =  self.ccmap[key]
+            ccmap *=1e3
+            if len(sigma)>1:
+                _sigma = sigma[kk]
+            else:
+                _sigma   = sigma
+            #vmin = clean['noise']*1e3
+            #vmax = ma.amax(ccmap)
+
+            level0  = vmin*_sigma
+            lev=[-level0]
+            for i in range(0,10):
+                lev.append(level0*2**i)
+#            vmax=ma.amax(ccmap)
+            #ccmap[ccmap <=level0] = level0
+            norm = mpl.colors.SymLogNorm(linthresh=level00,linscale=0.5,vmin=level00,vmax=vmax,base=10)
+            #sys.stdout.write('vmax={} ; vmin={}\n lev={} \n'.format(vmax,vmin,lev))
+
             if load_gs:
                 Dra = [-ra[kk],ra[kk]]
                 Ddec = [-dec[kk],dec[kk]]
@@ -705,72 +787,66 @@ class modelComp(object):
                 DEC = dec[kk]
 
             scale   = -clean['px_inc']*3.6e6
-            sigma   = sigma
-            level0  = clean['noise']*sigma
-            lev=[]
-            for i in range(0,10):
-                lev.append(level0*2**i)
             xx  = np.linspace(-clean['naxis']*0.5*scale,(clean['naxis']*0.5-1)*scale,clean['naxis'])
             yy  = np.linspace(clean['naxis']*0.5*scale,-(clean['naxis']*0.5-1)*scale,clean['naxis'])
             extent = np.max(xx),np.min(xx),np.min(yy),np.max(yy)
-            vmax=0.5*ma.amax(ccmap)
-            norm = mpl.colors.SymLogNorm(linthresh=level0,linscale=0.5,vmin=level0,vmax=vmax,base=np.e)
+
 
             ##################
             # Plotting
             ###################
-            #f,ax = plt.subplots()
-            ax.axis('scaled')
-            ax.set_xlim(Dra)
-            ax.set_ylim(Ddec)
-            ax.set_aspect(1)
-            ax.set_adjustable("datalim")
-            ax.invert_xaxis()
-            plotBeam(clean['beam'][0],clean['beam'][1],clean['beam'][2],RA,-DEC,ax)
+            #f,aa = plt.subplots()
+            aa.axis('scaled')
+            aa.set_xlim(Dra)
+            aa.set_ylim(Ddec)
+            aa.set_aspect(1)
+            aa.set_adjustable("datalim")
+            aa.invert_xaxis()
+            print(DEC)
+            plotBeam(clean['beam'][0],clean['beam'][1],clean['beam'][2],RA,-DEC,aa,color='white')
 
-           # cntr=ax.contour(xx,yy,ccmap,linewidths=cntr_lw,levels=lev,colors=cntr_color,alpha=1)
-            cntr = ax.contour(ccmap,linewidths=cntr_lw,levels=lev,colors=cntr_color,alpha=1,extent=extent)
+            cntr = aa.contour(ccmap,linewidths=cntr_lw,levels=lev[1:],colors=cntr_color,alpha=1,extent=extent)
             if plot_color:
-                im = ax.imshow(ccmap,cmap=self.colormap,extent=extent,origin='lower', interpolation='gaussian')
+                im = aa.imshow(ccmap,cmap=self.colormap,extent=extent,origin='lower', interpolation='gaussian')
                 im.set_norm(norm)
+                plt.style.use('dark_background')
+            if plot_model:
+                Mx  = model['DELTAX']
+                My  = model['DELTAY']
+                Mposa   = model['POSANGLE']
+                Mmaj    = model['MAJOR AX']
+                Mmin    = model['MINOR AX']
+                for j,xx in enumerate(Mx):
+                    epid=model['id'][j]
+                    ccolor = ccolors[self.ids==epid][0]
+                    e_comp = Ellipse([Mx[j],My[j]],Mmaj[j],Mmin[j],-Mposa[j]+90, color=ccolor, zorder=2, fill=False,lw=0.5)
+                    aa.add_artist(e_comp)
+                    maj1_x = Mx[j]-np.sin(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
+                    maj1_y = My[j]+np.cos(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
+                    maj2_x = Mx[j]+np.sin(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
+                    maj2_y = My[j]-np.cos(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
 
-            Mx  = model['DELTAX']
-            My  = model['DELTAY']
-            Mposa   = model['POSANGLE']
-            Mmaj    = model['MAJOR AX']
-            Mmin    = model['MINOR AX']
-            for j,xx in enumerate(Mx):
-                epid=model['id'][j]
-                ccolor = ccolors[self.ids==epid][0]
-                e_comp = Ellipse([Mx[j],My[j]],Mmaj[j],Mmin[j],-Mposa[j]+90, color=ccolor, zorder=2, fill=False,lw=0.5)
-                ax.add_artist(e_comp)
-                maj1_x = Mx[j]-np.sin(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
-                maj1_y = My[j]+np.cos(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
-                maj2_x = Mx[j]+np.sin(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
-                maj2_y = My[j]-np.cos(-np.pi/180*Mposa[j])*Mmaj[j]*0.5
-
-                min1_x = Mx[j]-np.sin(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
-                min1_y = My[j]+np.cos(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
-                min2_x = Mx[j]+np.sin(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
-                min2_y = My[j]-np.cos(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
-                if maj1_y==maj2_y:
-                    ax.plot(maj1_x,maj1_y, color = ccolor,marker='+', markersize=5,lw=1,label=model['id'][j])
-                else:
-                    ax.plot([maj1_x,maj2_x],[maj1_y,maj2_y], color = ccolor, lw = 1,label=model['id'][j])
-                    ax.plot([min1_x,min2_x],[min1_y,min2_y], color = ccolor, lw = 1)
-                if plot_cmp_arrow:
-                    ax.annotate('{}'.format(model['id'][j]),xy=(Mx[j],My[j]), xycoords='data', xytext=(-5, (-1)**j*40), textcoords='offset points',arrowprops=dict(arrowstyle="->", connectionstyle="arc3"), color=ccolor,fontsize=8)
+                    min1_x = Mx[j]-np.sin(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
+                    min1_y = My[j]+np.cos(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
+                    min2_x = Mx[j]+np.sin(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
+                    min2_y = My[j]-np.cos(-np.pi/180*(Mposa[j]+90))*Mmin[j]*0.5
+                    if maj1_y==maj2_y:
+                        aa.plot(maj1_x,maj1_y, color = ccolor,marker='+', markersize=5,lw=1,label=model['id'][j])
+                    else:
+                        aa.plot([maj1_x,maj2_x],[maj1_y,maj2_y], color = ccolor, lw = 1,label=model['id'][j])
+                        aa.plot([min1_x,min2_x],[min1_y,min2_y], color = ccolor, lw = 1)
+                    if plot_cmp_arrow:
+                        aa.annotate('{}'.format(model['id'][j]),xy=(Mx[j],My[j]), xycoords='data', xytext=(-5, (-1)**j*40), textcoords='offset points',arrowprops=dict(arrowstyle="->", connectionstyle="arc3"), color=ccolor,fontsize=8)
 
 
-            # set axis, labels, etc.
-            ax.set(xlabel='RA [mas]', ylabel='DEC [mas]')
-            ax.minorticks_on()
-            ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-            ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-            ax.set_title('{} - {:.1f} GHz - {}'.format(modelh['source'],modelh['freq'],modelh['date_obs']),size=12)
+            aa.set(xlabel='RA [mas]', ylabel='DEC [mas]')
+            aa.minorticks_on()
+            aa.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+            aa.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+            aa.set_title('{} - {:.1f} GHz - {}'.format(modelh['source'],modelh['freq'],modelh['date_obs']),size=12)
 # The following lines sort the labels and handles alphabetically 
             if plot_label:
-                handles, Labels = ax.get_legend_handles_labels()
+                handles, Labels = aa.get_legend_handles_labels()
                 labels.extend(Labels)
                 lines.extend(handles)
             kk+=1
@@ -779,13 +855,17 @@ class modelComp(object):
             by_label = dict(zip(labels, lines))
             keys_list = sorted(by_label, key=keyfunc)
             sorted_by_label = {key: by_label[key] for key in keys_list}
-            pos = ax.get_position()
-            ax.set_position([pos.x0, pos.y0, pos.width, pos.height * 0.85])
-            #ax.set_position([pos.x0, pos.y0, pos.width * 0.9, pos.height])
+            pos = aa.get_position()
+            aa.set_position([pos.x0, pos.y0, pos.width, pos.height * 0.85])
+            #aa.set_position([pos.x0, pos.y0, pos.width * 0.9, pos.height])
             fig.legend(sorted_by_label.values(), sorted_by_label.keys(),loc='upper left', bbox_to_anchor=(1,0.98),ncol=4)
-            #secx = ax.secondary_xaxis('left',)
+            #secx = aa.secondary_xaxis('left',)
             #secx.set_xlabel(args['Freq'])
 # sorting done, legend plottet
+
+        # set axis, labels, etc.
+        cbar = fig.colorbar(im, ax=ax, orientation='vertical',fraction=0.15,pad=0.15)
+        cbar.set_label(r'$S$ [mJy/beam]')
 
         plt.tight_layout()#pad=0.2,w_pad=0.2,h_pad=0.2)
         fig.subplots_adjust(right=0.95, top=0.98)
@@ -836,7 +916,7 @@ class modelComp(object):
             plt.show()
         plt.cla()
 
-    def fit_comp_spectrum(self,add_data=False,plot_areas=False,plot_all_components=False,comps=False,ccolor=False,out=True,fluxerr=False):
+    def fit_comp_spectrum(self,add_data=False,plot_areas=False,plot_all_components=False,comps=False,exclude_comps=False,ccolor=False,out=True,fluxerr=False,fit_free_ssa=False,plot_fit_summary=False,annotate_fit_results=True):
         '''
         If adding data please provide a dict as add_data={'flux':xxx, 'freq':yyy,'id':zzz})
         '''
@@ -844,9 +924,16 @@ class modelComp(object):
         if not self.model_sorted:
             self.sort_by_id()
         if comps:
-            model_sorted = {key: self.model_sorted[key] for key in comps}
+            comps_name = comps
         else:
-            model_sorted = self.model_sorted.copy()
+            comps = self.ids
+            comps_name = ['All']
+        if exclude_comps:
+            comps = [key for key in comps if key not in exclude_comps]
+            comps_name = ['All-'+''.join([i for i in exclude_comps if '/' not in i])]
+        #model_sorted = {key: self.model_sorted[key] for key in comps}
+        model_sorted = {key: self.model_sorted_shifted[key] for key in comps}
+
         del_comps = []
         for comp in model_sorted:
             if len(model_sorted[comp])<2:
@@ -866,8 +953,6 @@ class modelComp(object):
                 model_sorted[add_data['id']][-1]['MAJOR AX']=add_data['major']
                 model_sorted[add_data['id']][-1]['MINOR AX']=add_data['minor']
 
-
-
         NCOMP = len(model_sorted)
         if NCOMP==1:
             nx=1
@@ -884,11 +969,6 @@ class modelComp(object):
         ysize =3 
         yys= ysize*ny
 
-      #  figsize = set_size('aanda*',subplots=(ny,nx))
-      #  fig,axs = plt.subplots(ny,nx)
-        #axe_ratio = 'scaled'
-        #fig,axs=plt.subplots(nrows=ny,ncols=nx,figsize=set_size('aanda*',subplots=(ny,nx)),sharex=True,sharey=True)
-   #     fig,axs=plt.subplots(ny,nx,figsize=set_size('aanda*',subplots=(ny,nx)))#,sharex=True,sharey=True)
         fig,axs = plt.subplots(ny,nx, figsize=(xxs,yys))
 
         xlabel = 'Frequency [GHz]'
@@ -904,29 +984,47 @@ class modelComp(object):
         sn_p,sn_sd,sn_ch2,an_out,pl_p,pl_sd,pl_ch2,pl_out=[],[],[],[],[],[],[],[]
         fit=[]
         CompSN,CompPL,num,Sm,athin,athick,alpha,chi2SN,chi2PL,numE,SmE,athinE,athickE,alphaE=[],[],[],[],[],[],[],[],[],[],[],[],[],[]
+#        ffa_p,ffa_sd,ffa_ch2 = [],[],[]
+
         for i,comp in enumerate(model_sorted):
-            cflux = self.model_sorted[comp]['FLUX']
+            cflux = model_sorted[comp]['FLUX']
             if fluxerr:
                 if comp==fluxerr['comp']:
                     cfluxerr = fluxerr['error']*cflux.copy()
                     cfreq = fluxerr['freq']
                 else:
                     cfluxerr = 0.15*cflux.copy()
-                    cfreq = self.model_sorted[comp]['freq']
-            cid = self.model_sorted[comp]['id']
+                    cfreq = model_sorted[comp]['freq']
+            cid = model_sorted[comp]['id']
 
-            pl_x0 = np.array([np.min(cflux),-1])
-
+            print('Fit Powerlaw to Comp '+cid[0])
+            pl_x0 = np.array([np.mean(cflux),-1])
             beta,sd_beta,chi2,pl_out = ff.odr_fit(ff.powerlaw,[cfreq,cflux,cfluxerr],pl_x0,verbose=1)
             pl_p.append(beta)
             pl_sd.append(sd_beta)
             pl_ch2.append(chi2)
+
+#            print('Fit FFA to Comp '+cid[0])
+#            ffa_x0 = np.array([10,np.mean(cflux),1])
+#            beta,sd_beta,chi2,ffa_out = ff.odr_fit(ff.ffa,[cfreq,cflux,cfluxerr],ffa_x0,verbose=1)
+#            ffa_p.append(beta)
+#            ffa_sd.append(sd_beta)
+#            ffa_ch2.append(chi2)
+
             #fit Snu
             print('Fit SSA to Comp '+cid[0])
-            sn_x0 = np.array([100,np.max(cflux),3,-1])
-            if cid[0]=='B3':
-                sn_x0[0]=20
-            beta,sd_beta,chi2,sn_out = ff.odr_fit(ff.Snu,[cfreq,cflux,cfluxerr],sn_x0,verbose=1)
+            if fit_free_ssa:
+                sn_x0 = np.array([20,np.max(cflux),3,-1])
+            else:
+                sn_x0 = np.array([20,np.max(cflux),-1])
+            if cid[0]=='A15':
+                sn_x0[0]=100
+            if cid[0]=='C1':
+                sn_x0[0] = 10
+            if fit_free_ssa:
+                beta,sd_beta,chi2,sn_out = ff.odr_fit(ff.Snu,[cfreq,cflux,cfluxerr],sn_x0,verbose=1)
+            else:
+                beta,sd_beta,chi2,sn_out = ff.odr_fit(ff.Snu_real,[cfreq,cflux,cfluxerr],sn_x0,verbose=1)
             sn_p.append(beta)
             sn_sd.append(sd_beta)
             sn_ch2.append(chi2)
@@ -939,18 +1037,33 @@ class modelComp(object):
                 chi2PL.append(pl_ch2[i])
                 fit.append('PL')
             elif np.logical_and(pl_ch2[i]>sn_ch2[i],sn_out.info<5):
-                sys.stdout.write('ssa spectrum fits better\n')
-                CompSN.append(cid[0])
-                num.append(sn_p[i][0])
-                Sm.append(sn_p[i][1])
-                athin.append(sn_p[i][3])
-                athick.append(sn_p[i][2])
-                chi2SN.append(sn_ch2[i])
-                numE.append(sn_sd[i][0])
-                SmE.append(sn_sd[i][1])
-                athinE.append(sn_sd[i][3])
-                athickE.append(sn_sd[i][2])
-                fit.append('SN')
+                if fit_free_ssa:
+                    sys.stdout.write('ssa spectrum fits better\n')
+                    CompSN.append(cid[0])
+                    num.append(sn_p[i][0])
+                    Sm.append(sn_p[i][1])
+                    athin.append(sn_p[i][3])
+                    athick.append(sn_p[i][2])
+                    chi2SN.append(sn_ch2[i])
+                    numE.append(sn_sd[i][0])
+                    SmE.append(sn_sd[i][1])
+                    athinE.append(sn_sd[i][3])
+                    athickE.append(sn_sd[i][2])
+                    fit.append('SN')
+                else:
+                    sys.stdout.write('ssa spectrum fits better\n')
+                    CompSN.append(cid[0])
+                    num.append(sn_p[i][0])
+                    Sm.append(sn_p[i][1])
+                    athin.append(sn_p[i][2])
+                    chi2SN.append(sn_ch2[i])
+                    numE.append(sn_sd[i][0])
+                    SmE.append(sn_sd[i][1])
+                    athinE.append(sn_sd[i][2])
+                    fit.append('SN')
+                    athick.append(2.5)
+                    athickE.append(0.0)
+
             else:
                 sys.stdout.write('NO FIT WORKED, use power law\n')
                 CompPL.append(cid[0])
@@ -974,22 +1087,22 @@ class modelComp(object):
         #doing the plotting
         i=0
         for ax,comp in zip(axs,model_sorted):
-            cflux = self.model_sorted[comp]['FLUX']
+            cflux = model_sorted[comp]['FLUX']
             if fluxerr:
                 if comp==fluxerr['comp']:
                     cfluxerr = fluxerr['error']*cflux.copy()
                     cfreq = fluxerr['freq']
                 else:
                     cfluxerr = 0.15*cflux.copy()
-                    cfreq = self.model_sorted[comp]['freq']
+                    cfreq = model_sorted[comp]['freq']
 
-            cid = self.model_sorted[comp]['id']
+            cid = model_sorted[comp]['id']
 
             pl_x0 = np.array([np.min(cflux),-1])
 
 
-            color = ccolors[self.ids==comp][0]
-            symbol = self.symbols[i]
+#            color = ccolors[self.ids==comp][0]
+#            symbol = self.symbols[i]
 
             ax.set_xscale('log')
             ax.set_yscale('log')
@@ -997,23 +1110,55 @@ class modelComp(object):
             ax.minorticks_on()
             ax.errorbar(cfreq,cflux,cfluxerr,marker='.',ms=3,ls='none',color='red',elinewidth=0.8,label='Comp {}'.format(cid[0]))
             xr=np.arange(1,300,0.01)
+#            ax.plot(xr,ff.ffa(ffa_p[i],xr),'g',lw=0.5)
+
             if fit[i]=='PL':
                 textstr = '\n'.join((
                     r'$\alpha={:.2f}\pm{:.2f}$'.format(pl_p[i][1],pl_sd[i][1]),
                 ))
                 ax.annotate(textstr, xy=(0.05,0.1),xycoords='axes fraction',fontsize=8,bbox=props)
                 ax.plot(xr,ff.powerlaw(pl_p[i],xr),'k',lw=0.5)
+                y1 = ff.powerlaw(pl_p[i]-pl_sd[i],xr)
+                y2 = ff.powerlaw(pl_p[i]+pl_sd[i],xr)
+                ax.fill_between(xr,y1,y2,alpha=0.3)
             elif fit[i]=='SN':
-                textstr = '\n'.join((
-                    r'$\nu_m={:.2f}$'.format(sn_p[i][0]),
-                    r'$S_m={:.2f}$'.format(sn_p[i][1]),
-                    r'$\alpha_{{thin}}={:.2f}$'.format(sn_p[i][3]),
-                    r'$\alpha_{{thick}}={:.2f}$'.format(sn_p[i][2]),
-                  #  r'$\chi_\mathrm{{red}}^2={:.2f}$'.format(sn_ch2[i])
-                ))
+                if fit_free_ssa:
+                    textstr = '\n'.join((
+                        r'$\nu_m={:.2f}$'.format(sn_p[i][0]),
+                        r'$S_m={:.2f}$'.format(sn_p[i][1]),
+                        r'$\alpha_{{thin}}={:.2f}$'.format(sn_p[i][3]),
+                        r'$\alpha_{{thick}}={:.2f}$'.format(sn_p[i][2]),
+                        r'$\chi_\mathrm{{red}}^2={:.2f}$'.format(sn_ch2[i])
+                    ))
+                else:
+                    textstr = '\n'.join((
+                        r'$\nu_m={:.2f}$'.format(sn_p[i][0]),
+                        r'$S_m={:.2f}$'.format(sn_p[i][1]),
+                        r'$\alpha_{{thin}}={:.2f}$'.format(sn_p[i][2]),
+                        r'$\chi_\mathrm{{red}}^2={:.2f}$'.format(sn_ch2[i])
+                    ))
 
-                ax.annotate(textstr, xy=(0.05,0.1),xycoords='axes fraction',fontsize=8,bbox=props)
-                ax.plot(xr,ff.Snu(sn_p[i],xr),'k',lw=0.5)
+                if annotate_fit_results:
+                    ax.annotate(textstr, xy=(0.05,0.1),xycoords='axes fraction',fontsize=8,bbox=props)
+                sn_low = sn_p[i]-sn_sd[i]
+                sn_up = sn_p[i]+sn_sd[i]
+                for jj,SNL in enumerate(sn_low[:2]):
+                    if SNL <0:
+                        sys.stdout.write('Uncertainties for SN fit for comp{} large, limit peak flux and freq \n'.format(comp))
+                        if jj==0:
+                            sn_low[jj] = 0.1
+                        if jj == 1:
+                            sn_low[jj] = ymin
+                if fit_free_ssa:
+                    ax.plot(xr,ff.Snu(sn_p[i],xr),'k',lw=0.5)
+                    y1 = ff.Snu(sn_low,xr)
+                    y2 = ff.Snu(sn_up,xr)
+                else:
+                    ax.plot(xr,ff.Snu_real(sn_p[i],xr),'k',lw=0.5)
+                    y1 = ff.Snu_real(sn_low,xr)
+                    y2 = ff.Snu_real(sn_up,xr)
+
+                ax.fill_between(xr,y1,y2,alpha=0.2)
 
             ax.set_xlim(1,300)
             ax.set_ylim(ymin,5)
@@ -1028,7 +1173,7 @@ class modelComp(object):
         #set_corrected_size(fig,figsize)
         if out:
             if type(out)==bool:
-                outf = self.model[self.keys[0]]['source']+'_Component_spectrum_fit.pdf'
+                outf = self.model[self.keys[0]]['source']+'_spectrum_fit_components{}.pdf'.format(''.join(comps_name))
             elif type(out)==str:
                 outf = out
             fig.savefig(outf,bbox_inches='tight')
@@ -1036,7 +1181,61 @@ class modelComp(object):
         else:
             plt.show()
 
+#########3
+################
+        if plot_fit_summary:
+            xax = 'DIST'
+            xlabel='Distance [mas]'
+            yax = ['num','Sm','athin']
 
+            ylabel = [r'$\nu_\mathrm{m}$ [GHz]',r'$S_\mathrm{m}$ [Jy]',r'$\alpha_\mathrm{thin}$']
+            for jj,YY in enumerate(yax):
+                xx,xxE = [],[]
+                yy,yyE = [],[]
+                color,symbol,cid =[],[],[]
+                for i,comp in enumerate(model_sorted):
+                    if fit[i]=='SN':
+                        color.append(ccolors[self.ids==comp][0])
+                        symbol.append(self.symbols[i])
+                        model_sorted[comp].sort(xax)
+                        xx.append(np.mean(model_sorted[comp][xax]))
+                        xxE.append(np.std(model_sorted[comp][xax]))
+                        yy.append(sn_p[i][jj])
+                        yyE.append(sn_sd[i][jj])
+                        if yyE[-1]>abs(yy[-1]):
+                            yyE[-1]=abs(yy[-1])
+                            print(yyE[-1])
+                        cid.append(model_sorted[comp]['id'][jj])
+                        #sys.stdout.write('Component mean position: {} +- {}\n'.format(xx[-1],xxE[-1]))
+                # Do the plotting
+                fig,ax = plt.subplots(figsize=(10,6))
+
+                ax.errorbar(xx,yy,yerr=yyE,xerr=xxE,marker='.',ms=3,ls='none',color='red',elinewidth=0.8)#,label='Comp {}'.format(cid[0]))
+                xmin = np.floor(min(xx)-max(xxE))
+                #xmin = Rs2mas(100)
+                xmax = np.round(max(xx)+max(xxE))
+                ymin = np.floor(2*min(yy))
+                ymax = np.round(max(yy))
+                if yax[jj]=='athin':
+                    ymin = -10
+                    ymax = -0.5 
+                    ax.invert_yaxis()
+                ax.set_xlim(xmin,xmax)
+                ax.set_ylim(ymin,ymax)
+
+                ax.set_xscale('symlog',linthresh=np.abs(min(np.abs(xx))),subs=[2, 3, 4, 5, 6, 7, 8, 9])#,linthresh=Rs2mas(100))
+                ax.set_yscale('symlog',linthresh=np.abs(min(np.abs(yy))),subs=[2, 3, 4, 5, 6, 7, 8, 9])
+                ax.set(xlabel=xlabel, ylabel=ylabel[jj])
+                ax.minorticks_on()
+                ax.invert_xaxis()
+                ax.tick_params(which='both', direction='in')
+                #set_corrected_size(fig,figsize)
+
+                fig.subplots_adjust(right=0.8, top=0.98, left=0.06,bottom=0.06)
+                outF = '_'.join(outf.split('.')[:-1])+'fit_summary'+yax[jj]+'.pdf'
+                fig.savefig(outF,bbox_inches='tight')
+                sys.stdout.write('Plot {} has been written to {}\n'.format(yax[jj],outF))
+#
     def write_tex_table(self):
         '''Write out a tex table with all modelfit parameters.
         '''
